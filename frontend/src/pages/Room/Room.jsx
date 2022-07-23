@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useWebRTC } from '../../hooks/useWebRTC';
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getRoom } from '../../http';
 
 import styles from './Room.module.css';
@@ -13,7 +13,7 @@ const Room = () => {
 
     const { clients, provideRef, handleMute } = useWebRTC(roomId, user);
 
-    const history = useHistory();
+    const history = useNavigate();
 
     const [isMuted, setMuted] = useState(true);
 

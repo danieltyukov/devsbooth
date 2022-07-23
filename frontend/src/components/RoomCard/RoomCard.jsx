@@ -1,9 +1,9 @@
 import React from 'react';
 import styles from './RoomCard.module.css';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const RoomCard = ({ room }) => {
-    const history = useHistory();
+    const history = useNavigate();
     return (
         <div
             onClick={() => {
