@@ -40,4 +40,3 @@
 ### 🧷 Diagrams
 
 ![Backend Diagram](./backend-diagram.svg)
-<img src="./backend-diagram.svg">
