@@ -36,3 +36,8 @@
   
 * Logout
   * User can logout using logout button.
+
+### 🧷 Diagrams
+
+![Backend Diagram](./backend-diagram.svg)
+<img src="./backend-diagram.svg">
