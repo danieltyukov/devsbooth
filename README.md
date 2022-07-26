@@ -1,4 +1,4 @@
-# 👨‍💻 DevCondo Project Requirements
+# 👨‍💻 DevsBooth Project Requirements
 
 ### 🔥 Features
 
