@@ -7,7 +7,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - /var/databases/mongodb/devcondo-data:/data/db
+      - /var/databases/mongodb/devsbooth-data:/data/db
   backend:
     build:
       dockerfile: Dockerfile.prod

@@ -25,7 +25,7 @@ const StepName = ({ onNext }) => {
                     onChange={(e) => setFullname(e.target.value)}
                 />
                 <p className={styles.paragraph}>
-                    People use real names at DevCondo :) !
+                    People use real names at DevsBooth :) !
                 </p>
                 <div>
                     <Button onClick={nextStep} text="Next" />
