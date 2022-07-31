@@ -33,7 +33,7 @@ const Navigation = () => {
         <nav className={`${styles.navbar} container`}>
             <Link style={brandStyle} to="/">
                 <img src="/images/logo.png" alt="logo" />
-                <span style={logoText}>DevCondo</span>
+                <span style={logoText}>DevsBooth</span>
             </Link>
             {isAuth && (
                 <div className={styles.navRight}>

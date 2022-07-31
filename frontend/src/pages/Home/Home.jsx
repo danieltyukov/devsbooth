@@ -11,9 +11,9 @@ const Home = () => {
     }
     return (
         <div className={styles.cardWrapper}>
-            <Card title="Welcome to DevCondo!" icon="logo">
+            <Card title="Welcome to DevsBooth!" icon="logo">
                 <p className={styles.text}>
-                    We’re working hard to get DevCondo ready for everyone!
+                    We’re working hard to get DevsBooth ready for everyone!
                     While we wrap up the finishing youches, we’re adding people
                     gradually to make sure nothing breaks
                 </p>
