@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+require('dotenv').config();
 
 const socketInit = () => {
     const options = {

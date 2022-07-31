@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { setAuth } from '../store/authSlice';
+require('dotenv').config();
+
 export function useLoadingWithRefresh() {
     const [loading, setLoading] = useState(true);
     const dispatch = useDispatch();
