@@ -1,31 +1,37 @@
 import { Schema, model } from 'mongoose';
 
+/**
+ * One emailed code, bound to the browser that asked for it through a random
+ * challenge token. Several can be live for the same address at once.
+ */
 export interface LoginCodeFields {
   email: string;
+  /** SHA-256 of the challenge token returned to the requesting browser. */
+  challengeHash: string;
   salt: string;
   hash: string;
-  /** Wrong guesses against the current code. */
+  /** Guesses made against this code, reserved before each comparison. */
   attempts: number;
-  sentAt: Date;
-  /** When the current code stops working. */
+  /** When the code stops working. */
   expiresAt: Date;
-  /** Wrong guesses for this address since `windowStartedAt`, across re-sent codes. */
-  failures: number;
-  windowStartedAt: Date;
-  /** When MongoDB deletes the record: after the code expires and the failure window closes. */
+  /** When MongoDB deletes the record. Kept past expiry so the hourly cap can count it. */
   purgeAt: Date;
+  createdAt: Date;
 }
 
-const loginCodeSchema = new Schema<LoginCodeFields>({
-  email: { type: String, required: true, unique: true },
-  salt: { type: String, required: true },
-  hash: { type: String, required: true },
-  attempts: { type: Number, default: 0 },
-  sentAt: { type: Date, required: true },
-  expiresAt: { type: Date, required: true },
-  failures: { type: Number, default: 0 },
-  windowStartedAt: { type: Date, required: true },
-  purgeAt: { type: Date, required: true, expires: 0 },
-});
+const loginCodeSchema = new Schema<LoginCodeFields>(
+  {
+    email: { type: String, required: true },
+    challengeHash: { type: String, required: true, unique: true },
+    salt: { type: String, required: true },
+    hash: { type: String, required: true },
+    attempts: { type: Number, default: 0 },
+    expiresAt: { type: Date, required: true },
+    purgeAt: { type: Date, required: true, expires: 0 },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+
+loginCodeSchema.index({ email: 1, createdAt: -1 });
 
 export const LoginCode = model<LoginCodeFields>('LoginCode', loginCodeSchema, 'login_codes');

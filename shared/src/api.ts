@@ -1,5 +1,10 @@
 import type { RoomType } from './limits';
 
+/** Returned when a sign-in code is sent. The browser sends it back with the code. */
+export interface CodeChallenge {
+  challenge: string;
+}
+
 export interface UserSummary {
   id: string;
   username: string;

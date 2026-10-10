@@ -67,8 +67,11 @@ export async function startTestApp(env: Record<string, string> = {}): Promise<Te
   };
 
   const signIn = async (email: string) => {
-    await http.post('/api/auth/code').send({ email }).expect(204);
-    const res = await http.post('/api/auth/verify').send({ email, code: lastCode(email) }).expect(200);
+    const sent = await http.post('/api/auth/code').send({ email }).expect(200);
+    const res = await http
+      .post('/api/auth/verify')
+      .send({ email, code: lastCode(email), challenge: sent.body.challenge })
+      .expect(200);
     const setCookie = res.headers['set-cookie'] as unknown as string[];
     return setCookie[0]!.split(';')[0]!;
   };
