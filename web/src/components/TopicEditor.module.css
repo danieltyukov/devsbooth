@@ -1,0 +1,12 @@
+.form {
+  display: grid;
+  gap: 12px;
+  flex-basis: 100%;
+  max-width: 36rem;
+  margin-top: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}

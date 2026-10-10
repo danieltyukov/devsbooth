@@ -65,10 +65,14 @@ function fail(code: ApiErrorCode, message: string) {
 const channel = (roomId: string) => `room:${roomId}`;
 
 export interface Hub {
-  /** Live participant count for the rooms list. */
+  /** Live participant count for one room. */
   count(roomId: string): number;
+  /** Live participant counts for a batch of rooms, for room lists. */
+  countRooms(roomIds: string[]): Promise<Record<string, number>>;
   /** Starts the empty-room timer for a room nobody has joined yet. */
   roomCreated(roomId: string): void;
+  /** Tells everyone in a room that its details changed. */
+  roomUpdated(roomId: string, patch: { topic: string }): void;
   /** Ends a room in the database and sends everyone in it home. */
   endRoom(roomId: string): Promise<boolean>;
   /** After a restart nobody is connected, so every live room starts its empty-room timer. */
@@ -263,7 +267,11 @@ export function createHub(io: IoServer, config: Config): Hub {
 
   return {
     count: (roomId) => presence.count(roomId),
+    countRooms: async (roomIds) => Object.fromEntries(roomIds.map((id) => [id, presence.count(id)])),
     roomCreated: (roomId) => lifecycle.vacant(roomId),
+    roomUpdated: (roomId, patch) => {
+      io.to(channel(roomId)).emit('room:updated', patch);
+    },
     endRoom,
     async scheduleIdleRooms() {
       for (const roomId of await liveRoomIds()) {

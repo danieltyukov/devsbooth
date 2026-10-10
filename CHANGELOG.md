@@ -8,7 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Room keyboard shortcuts: speakers can press M to mute or unmute, and listeners can press H to raise or lower a hand.
+- Room keyboard shortcuts: speakers can press M to mute or unmute, and listeners can press H to raise or lower a hand ([#16](https://github.com/danieltyukov/devsbooth/issues/16), thanks @pollychen-lab).
+- Profiles list the live rooms a person hosts, following the same visibility rules as the rooms list ([#15](https://github.com/danieltyukov/devsbooth/issues/15)).
+- On phones and other browsers with a share sheet, "Share link" opens it; elsewhere the link is copied ([#17](https://github.com/danieltyukov/devsbooth/issues/17)).
+- The host can change the room topic, and everyone in the room sees it at once ([#18](https://github.com/danieltyukov/devsbooth/issues/18)).
 
 ## [1.0.0] - 2026-10-10
 

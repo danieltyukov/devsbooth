@@ -28,7 +28,7 @@
 
 - **Sign in with an email code.** No passwords. Without SMTP configured, codes are printed in the server log, so a fresh install works with no accounts anywhere.
 - **Three kinds of room.** Open rooms are listed for everyone, follower rooms for people who follow the host, and private rooms only for whoever has the link.
-- **Speakers and listeners.** Listeners join muted and raise a hand. The host invites them to speak, moves people back to the audience, and ends the room.
+- **Speakers and listeners.** Listeners join muted and raise a hand. The host invites them to speak, moves people back to the audience, renames the room, and ends it. M mutes, H raises a hand.
 - **Live meters.** Each speaker's strip shows their audio level, and your own mic button lights up when you are on air. Pick any microphone the browser can see.
 - **Profiles and follows,** with a photo, a short bio and follower counts.
 - **Peer to peer audio.** Voices travel between browsers over WebRTC. The server introduces people and keeps track of who is in which room; it never handles audio.
