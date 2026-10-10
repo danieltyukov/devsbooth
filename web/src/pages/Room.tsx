@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Hand, Link2, Mic, MicOff, Volume2 } from 'lucide-react';
+import { ArrowLeft, Hand, Link2, Mic, MicOff, Share2, Volume2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import type { ClientConfig, Participant, Role } from '@devsbooth/shared';
 import { api, errorMessage } from '../api/client';
@@ -10,6 +10,8 @@ import { Button, ButtonLink } from '../components/Button';
 import { FullPageMessage } from '../components/FullPageMessage';
 import { LevelMeter } from '../components/LevelMeter';
 import { Notice } from '../components/Notice';
+import { TopicEditor } from '../components/TopicEditor';
+import { canShare, shareLink } from '../lib/share';
 import { useAudioInputs } from '../rtc/devices';
 import { useLevel, type LevelStore } from '../rtc/levels';
 import { selectStage } from '../rtc/room-state';
@@ -172,6 +174,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const onAudioBlocked = useCallback(() => setAudioBlocked(true), []);
+  const [sharable] = useState(() => canShare());
 
   const endRoom = useMutation({
     mutationFn: () => api(`/rooms/${roomId}`, { method: 'DELETE' }),
@@ -271,13 +274,15 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
     setNotice(problem);
   }
 
-  async function copyLink() {
+  async function shareRoom() {
+    const url = `${window.location.origin}/r/${room.id}`;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/r/${room.id}`);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2500);
+      if ((await shareLink(url, room.topic)) === 'copied') {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2500);
+      }
     } catch {
-      setNotice(`Copy this link to invite people: ${window.location.origin}/r/${room.id}`);
+      setNotice(`Copy this link to invite people: ${url}`);
     }
   }
 
@@ -316,6 +321,13 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
             </span>
             {room.type === 'private' && <span className={styles.typeTag}>Private room</span>}
             {room.type === 'social' && <span className={styles.typeTag}>Followers room</span>}
+            {viewerIsHost && (
+              <TopicEditor
+                roomId={room.id}
+                topic={room.topic}
+                onSaved={(topic) => session.updateRoom({ topic })}
+              />
+            )}
           </p>
         </header>
 
@@ -437,8 +449,12 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
           </div>
 
           <div className={styles.right}>
-            <Button variant="ghost" icon={<Link2 aria-hidden="true" />} onClick={copyLink}>
-              {copied ? 'Link copied' : 'Copy link'}
+            <Button
+              variant="ghost"
+              icon={sharable ? <Share2 aria-hidden="true" /> : <Link2 aria-hidden="true" />}
+              onClick={shareRoom}
+            >
+              {copied ? 'Link copied' : sharable ? 'Share link' : 'Copy link'}
             </Button>
             {viewerIsHost && (
               <Button

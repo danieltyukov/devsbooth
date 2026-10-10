@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { ClientConfig, ClientToServerEvents, Role, ServerToClientEvents } from '@devsbooth/shared';
+import type {
+  ClientConfig,
+  ClientToServerEvents,
+  Role,
+  RoomSummary,
+  ServerToClientEvents,
+} from '@devsbooth/shared';
 import { LevelStore, LocalMeter } from './levels';
 import { Mesh } from './mesh';
 import { initialRoomState, roomReducer, selectSelf } from './room-state';
@@ -198,6 +204,7 @@ export function useRoomSession(
       if (patch.role) applyRole(patch.role);
     });
     socket.on('rtc:signal', ({ from, ...payload }) => mesh.handleSignal(from, payload));
+    socket.on('room:updated', (patch) => dispatch({ type: 'room-updated', patch }));
     socket.on('room:ended', () => {
       dispatch({ type: 'ended' });
       stop();
@@ -269,6 +276,12 @@ export function useRoomSession(
     [acquireMicrophone],
   );
 
+  /** Applies a change the host just saved, before the broadcast arrives. */
+  const updateRoom = useCallback(
+    (patch: Partial<Pick<RoomSummary, 'topic'>>) => dispatch({ type: 'room-updated', patch }),
+    [],
+  );
+
   const retryMicrophone = useCallback(() => void acquireMicrophone(deviceRef.current), [acquireMicrophone]);
 
   return {
@@ -282,5 +295,6 @@ export function useRoomSession(
     setRole,
     switchMicrophone,
     retryMicrophone,
+    updateRoom,
   };
 }

@@ -45,6 +45,8 @@ export interface ServerToClientEvents {
   'peer:updated': (patch: ParticipantPatch) => void;
   'rtc:signal': (event: { from: string } & SignalPayload) => void;
   'room:ended': () => void;
+  /** The host changed the room's details. */
+  'room:updated': (patch: { topic: string }) => void;
   'room:kicked': (event: { reason: 'joined-elsewhere' }) => void;
 }
 

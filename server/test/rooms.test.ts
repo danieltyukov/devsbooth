@@ -97,6 +97,48 @@ describe('rooms', () => {
     expect(await list(host.cookie)).not.toContain('Short lived');
   });
 
+  it('lists the rooms a person hosts, as far as the viewer may see them', async () => {
+    const solo = await t.createUser('solo_host');
+    const fan = await t.createUser('solo_fan');
+    const passerby = await t.createUser('solo_passerby');
+    await t.http.put('/api/users/solo_host/follow').set('Cookie', fan.cookie).expect(200);
+    await create('Solo open', 'open', solo.cookie);
+    await create('Solo social', 'social', solo.cookie);
+    await create('Solo private', 'private', solo.cookie);
+
+    const hosted = async (cookie: string) => {
+      const res = await t.http.get('/api/users/solo_host/rooms').set('Cookie', cookie).expect(200);
+      return (res.body.rooms as RoomSummary[]).map((room) => room.topic).sort();
+    };
+    expect(await hosted(passerby.cookie)).toEqual(['Solo open']);
+    expect(await hosted(fan.cookie)).toEqual(['Solo open', 'Solo social']);
+    expect(await hosted(solo.cookie)).toEqual(['Solo open', 'Solo private', 'Solo social']);
+    await t.http.get('/api/users/nobody_at_all/rooms').set('Cookie', fan.cookie).expect(404);
+  });
+
+  it('lets only the host change the topic', async () => {
+    const room = await create('First topic', 'open');
+    await t.http
+      .patch(`/api/rooms/${room.id}`)
+      .set('Cookie', stranger.cookie)
+      .send({ topic: 'Hijacked' })
+      .expect(403);
+    const short = await t.http
+      .patch(`/api/rooms/${room.id}`)
+      .set('Cookie', host.cookie)
+      .send({ topic: 'x' })
+      .expect(400);
+    expect(short.body.error.fields.topic).toBeTruthy();
+    const res = await t.http
+      .patch(`/api/rooms/${room.id}`)
+      .set('Cookie', host.cookie)
+      .send({ topic: 'Second topic' })
+      .expect(200);
+    expect(res.body.room.topic).toBe('Second topic');
+    const fetched = await t.http.get(`/api/rooms/${room.id}`).set('Cookie', stranger.cookie).expect(200);
+    expect(fetched.body.room.topic).toBe('Second topic');
+  });
+
   it('returns 404 for unknown rooms', async () => {
     await t.http.get('/api/rooms/doesnotexist').set('Cookie', host.cookie).expect(404);
   });

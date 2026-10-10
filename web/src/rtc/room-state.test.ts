@@ -56,6 +56,12 @@ describe('roomReducer', () => {
     expect(state.connections).not.toHaveProperty('late');
   });
 
+  it('applies room changes from the host', () => {
+    const state = roomReducer(joined(), { type: 'room-updated', patch: { topic: 'Renamed' } });
+    expect(state.room?.topic).toBe('Renamed');
+    expect(roomReducer(initialRoomState, { type: 'room-updated', patch: { topic: 'x' } }).room).toBeNull();
+  });
+
   it('ignores connection updates for peers who already left', () => {
     const state = roomReducer(joined(), { type: 'connection', peerId: 'ghost', state: 'failed' });
     expect(state.connections).toEqual({});

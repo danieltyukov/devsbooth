@@ -20,6 +20,7 @@ export type RoomAction =
   | { type: 'peer-left'; peerId: string }
   | { type: 'peer-updated'; patch: ParticipantPatch }
   | { type: 'connection'; peerId: string; state: RTCPeerConnectionState }
+  | { type: 'room-updated'; patch: Partial<Pick<RoomSummary, 'topic'>> }
   | { type: 'ended' }
   | { type: 'kicked' }
   | { type: 'failed'; error: NonNullable<RoomState['error']> };
@@ -70,6 +71,8 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
     case 'connection':
       if (!state.participants.some((p) => p.peerId === action.peerId)) return state;
       return { ...state, connections: { ...state.connections, [action.peerId]: action.state } };
+    case 'room-updated':
+      return state.room ? { ...state, room: { ...state.room, ...action.patch } } : state;
     case 'ended':
       return { ...state, status: 'ended', participants: [], connections: {} };
     case 'kicked':

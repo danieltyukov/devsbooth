@@ -87,6 +87,26 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Live participant counts for a batch of rooms, keyed by room id. */
+export type CountRooms = (roomIds: string[]) => Promise<Record<string, number>>;
+
+async function summarize(rooms: PopulatedRoom[], countRooms: CountRooms): Promise<RoomSummary[]> {
+  const counts = await countRooms(rooms.map((room) => room.publicId));
+  return rooms
+    .map((room) => toRoomSummary(room, counts[room.publicId] ?? 0))
+    .sort((a, b) => b.participantCount - a.participantCount || b.createdAt.localeCompare(a.createdAt));
+}
+
+function findPopulated(filter: Record<string, unknown>) {
+  return Room.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .populate<{ owner: PopulatedUser }>('owner', USER_FIELDS)
+    .populate<{ speakers: PopulatedUser[] }>('speakers', USER_FIELDS)
+    .lean<PopulatedRoom[]>()
+    .exec();
+}
+
 /**
  * Rooms listed for `viewer`: every open room, social rooms of people they follow,
  * and all of their own rooms. Busiest first, then newest.
@@ -94,7 +114,7 @@ function escapeRegex(text: string): string {
 export async function listRooms(
   viewer: UserDoc,
   query: string,
-  countParticipants: (roomId: string) => number,
+  countRooms: CountRooms,
 ): Promise<RoomSummary[]> {
   const following = await Follow.find({ follower: viewer._id }).distinct('followee');
   const filter: Record<string, unknown> = {
@@ -103,18 +123,28 @@ export async function listRooms(
   };
   const q = query.trim();
   if (q) filter.topic = { $regex: escapeRegex(q), $options: 'i' };
+  return summarize(await findPopulated(filter), countRooms);
+}
 
-  const rooms = await Room.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(200)
-    .populate<{ owner: PopulatedUser }>('owner', USER_FIELDS)
-    .populate<{ speakers: PopulatedUser[] }>('speakers', USER_FIELDS)
-    .lean<PopulatedRoom[]>()
-    .exec();
+/**
+ * Live rooms hosted by `host` that `viewer` may see: open rooms, follower rooms when the viewer
+ * follows the host, and private rooms only when the viewer is the host.
+ */
+export async function listHostedRooms(
+  host: UserDoc,
+  viewer: UserDoc,
+  countRooms: CountRooms,
+): Promise<RoomSummary[]> {
+  const types: RoomType[] = ['open'];
+  if (host._id.equals(viewer._id)) types.push('social', 'private');
+  else if (await follows(viewer._id, host._id)) types.push('social');
+  return summarize(await findPopulated({ endedAt: null, owner: host._id, type: { $in: types } }), countRooms);
+}
 
-  return rooms
-    .map((room) => toRoomSummary(room, countParticipants(room.publicId)))
-    .sort((a, b) => b.participantCount - a.participantCount || b.createdAt.localeCompare(a.createdAt));
+/** Changes a live room's topic. Returns false if the room has ended or does not exist. */
+export async function setTopic(publicId: string, topic: string): Promise<boolean> {
+  const result = await Room.updateOne({ publicId, endedAt: null }, { topic });
+  return result.matchedCount === 1;
 }
 
 /** Marks a room ended. Returns false if it was already ended or does not exist. */

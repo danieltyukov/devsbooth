@@ -104,7 +104,7 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
     }),
   );
   api.use('/me', meRoutes({ avatarsDir: config.avatarsDir }));
-  api.use('/users', userRoutes());
+  api.use('/users', userRoutes(hub));
   api.use('/rooms', roomRoutes(hub));
   api.use(metaRoutes(config));
   api.use(apiNotFound);

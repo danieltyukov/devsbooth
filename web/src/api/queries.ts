@@ -8,6 +8,7 @@ export const keys = {
   rooms: (q: string) => ['rooms', q] as const,
   room: (id: string) => ['room', id] as const,
   profile: (username: string) => ['profile', username.toLowerCase()] as const,
+  hosted: (username: string) => ['hosted', username.toLowerCase()] as const,
 };
 
 /** The signed-in user, or null when signed out. */
@@ -60,5 +61,15 @@ export function useProfile(username: string) {
     queryFn: () =>
       api<{ profile: Profile }>(`/users/${encodeURIComponent(username)}`).then((res) => res.profile),
     retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
+  });
+}
+
+/** Live rooms a person hosts, as far as you may see them. */
+export function useHostedRooms(username: string) {
+  return useQuery({
+    queryKey: keys.hosted(username),
+    queryFn: async (): Promise<RoomSummary[]> =>
+      (await api<{ rooms: RoomSummary[] }>(`/users/${encodeURIComponent(username)}/rooms`)).rooms,
+    refetchInterval: 15_000,
   });
 }

@@ -4,7 +4,8 @@ import { currentUser, requireOnboarded } from '../auth/middleware';
 import { HttpError, notFound } from '../http/errors';
 import { Follow } from '../models/follow';
 import { User, type UserDoc } from '../models/user';
-import { follows } from '../rooms/service';
+import type { Hub } from '../realtime/hub';
+import { follows, listHostedRooms } from '../rooms/service';
 import { avatarUrl } from '../users/dto';
 
 async function findByUsername(req: Request): Promise<UserDoc> {
@@ -34,13 +35,18 @@ async function profileOf(user: UserDoc, viewer: UserDoc): Promise<Profile> {
   };
 }
 
-export function userRoutes() {
+export function userRoutes(hub: Hub) {
   const router = Router();
   router.use(requireOnboarded);
 
   router.get('/:username', async (req, res) => {
     const user = await findByUsername(req);
     res.json({ profile: await profileOf(user, currentUser(req)) });
+  });
+
+  router.get('/:username/rooms', async (req, res) => {
+    const user = await findByUsername(req);
+    res.json({ rooms: await listHostedRooms(user, currentUser(req), hub.countRooms) });
   });
 
   router.put('/:username/follow', async (req, res) => {

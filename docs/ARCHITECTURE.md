@@ -82,6 +82,7 @@ The events are typed in `shared/src/realtime.ts`.
 | `peer:joined`, `peer:left` | Someone arrived or left.                                                                |
 | `peer:updated`             | Someone's role, mute or hand changed. Sent to everyone, including the person concerned. |
 | `rtc:signal`               | A relayed offer, answer or candidate, with the sender's peer id.                        |
+| `room:updated`             | The host changed the topic.                                                             |
 | `room:ended`               | The host ended the room, or it expired.                                                 |
 | `room:kicked`              | The same person joined from another tab, which takes over.                              |
 
