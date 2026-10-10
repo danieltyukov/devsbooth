@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MAX_ATTEMPTS } from '../src/auth/codes';
+import { consumeCode, issueCode, MAX_ATTEMPTS, MAX_FAILURES, RESEND_COOLDOWN_MS } from '../src/auth/codes';
+import { HttpError } from '../src/http/errors';
 import { startTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -68,6 +69,43 @@ describe('sign-in codes', () => {
       .send({ email: 'margaret@example.com', code: right })
       .expect(400);
     expect(res.body.error.code).toBe('code_expired');
+  });
+
+  it('caps parallel guesses at the per-code limit', async () => {
+    await t.http.post('/api/auth/code').send({ email: 'race@example.com' }).expect(204);
+    const right = t.lastCode('race@example.com');
+    const wrong = right === '000000' ? '111111' : '000000';
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        t.http.post('/api/auth/verify').send({ email: 'race@example.com', code: wrong }),
+      ),
+    );
+    const invalid = results.filter((res) => res.body.error?.code === 'code_invalid');
+    expect(invalid).toHaveLength(MAX_ATTEMPTS);
+    await t.http.post('/api/auth/verify').send({ email: 'race@example.com', code: right }).expect(400);
+  });
+
+  it('keeps counting failures across re-sent codes', async () => {
+    const email = 'persistent@example.com';
+    const errorCode = async (promise: Promise<unknown>) => {
+      try {
+        await promise;
+        return 'ok';
+      } catch (err) {
+        return err instanceof HttpError ? err.code : 'other';
+      }
+    };
+    let now = Date.now();
+    let failures = 0;
+    while (failures < MAX_FAILURES) {
+      const code = await issueCode(email, new Date(now));
+      const wrong = code === '000000' ? '111111' : '000000';
+      for (let i = 0; i < MAX_ATTEMPTS && failures < MAX_FAILURES; i++, failures++) {
+        expect(await errorCode(consumeCode(email, wrong, new Date(now)))).toBe('code_invalid');
+      }
+      now += RESEND_COOLDOWN_MS + 1;
+    }
+    expect(await errorCode(issueCode(email, new Date(now)))).toBe('too_many_requests');
   });
 
   it('accepts a code only once', async () => {
