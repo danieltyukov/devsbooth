@@ -277,8 +277,8 @@ SMTP_URL=smtps://user:password@smtp.example.com:465</code></pre>
               <dd>
                 A full mesh suits small rooms, since every speaker uploads a separate stream to each person in
                 the room. The default cap is 25 people per room, set by <code>ROOM_MAX_PARTICIPANTS</code>.
-                Bigger rooms would need an SFU. Presence is kept in memory, so run one server process rather
-                than several replicas.
+                Bigger rooms would need an SFU. One server process is the default; with
+                <code>REDIS_URL</code> several share presence through Redis.
               </dd>
             </div>
           </dl>

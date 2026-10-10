@@ -61,10 +61,10 @@ export async function follows(followerId: Types.ObjectId, followeeId: Types.Obje
  * Open and private rooms are reachable by anyone signed in who has the link.
  * Social rooms are for the owner and the owner's followers.
  */
-export async function canEnter(room: PopulatedRoom, viewer: UserDoc): Promise<boolean> {
+export async function canEnter(room: PopulatedRoom, viewerId: Types.ObjectId): Promise<boolean> {
   if (room.type !== 'social') return true;
-  if (room.owner._id.equals(viewer._id)) return true;
-  return follows(viewer._id, room.owner._id);
+  if (room.owner._id.equals(viewerId)) return true;
+  return follows(viewerId, room.owner._id);
 }
 
 export function isSpeaker(room: Pick<PopulatedRoom, 'owner' | 'speakers'>, userId: Types.ObjectId): boolean {

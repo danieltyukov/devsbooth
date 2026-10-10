@@ -98,8 +98,38 @@ With a TURN server in place, `ICE_TRANSPORT_POLICY=relay` routes all audio throu
 
 ## Limits
 
-- A room holds `ROOM_MAX_PARTICIPANTS` people (default 25). Every pair holds a connection, so very large rooms strain browsers before they strain the server.
-- One server process serves everyone. Presence is kept in memory, so do not run several replicas behind a load balancer.
+A room holds `ROOM_MAX_PARTICIPANTS` people (default 25). Every pair holds a connection, so very large rooms strain browsers before they strain the server.
+
+## Several processes
+
+One process goes a long way, since it never touches audio. To run more, for redundancy or to spread WebSocket connections, give every process the same Redis:
+
+```sh
+REDIS_URL=redis://redis:6379
+```
+
+With `REDIS_URL` set, presence (who is in which room, with which role) lives in Redis, and the processes reach each other's sockets through the Socket.IO Redis adapter. Each process sends a heartbeat; when one stops, the others take its participants out of their rooms and tell everyone, within about twenty seconds. Put the processes behind any load balancer that passes WebSocket upgrades. Sticky sessions are not needed, because clients only use WebSockets.
+
+A compose sketch:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/danieltyukov/devsbooth:latest
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/devsbooth
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - app-data:/data
+    deploy:
+      replicas: 3
+  redis:
+    image: redis:8
+```
+
+- Avatars are files, so every process needs the same `DATA_DIR`: a shared volume, as above, or uploads only exist on the process that received them.
+- Use one Redis instance, not Redis Cluster. Presence updates are scripts that touch several keys at once.
+- `REDIS_PREFIX` (default `devsbooth:`) keeps two DevsBooth instances apart if they share a Redis.
 
 ## Backups and upgrades
 

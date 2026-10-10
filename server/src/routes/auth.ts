@@ -35,7 +35,7 @@ export function authRoutes(deps: {
   secureCookies: boolean;
   limiter: RequestHandler;
   /** Called after logout, to disconnect the session's sockets. */
-  onLogout: (token: string) => void;
+  onLogout: (token: string) => Promise<void>;
 }) {
   const router = Router();
 
@@ -70,7 +70,7 @@ export function authRoutes(deps: {
   router.post('/logout', async (req, res) => {
     if (req.sessionToken) {
       await destroySession(req.sessionToken);
-      deps.onLogout(req.sessionToken);
+      await deps.onLogout(req.sessionToken);
     }
     clearSessionCookie(res, deps.secureCookies);
     res.status(204).end();
