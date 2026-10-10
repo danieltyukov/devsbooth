@@ -154,7 +154,18 @@ interface SessionProps {
 function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
   const navigate = useNavigate();
   const session = useRoomSession(roomId, ice);
-  const { state, self, levels, mic } = session;
+  const {
+    state,
+    self,
+    remoteStreams,
+    levels,
+    mic,
+    retryMicrophone,
+    setHandRaised,
+    setMuted,
+    setRole,
+    switchMicrophone,
+  } = session;
   const inputs = useAudioInputs(mic.status === 'on');
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -179,6 +190,35 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
     const timer = window.setTimeout(() => setConfirmEnd(false), 4000);
     return () => window.clearTimeout(timer);
   }, [confirmEnd]);
+
+  useEffect(() => {
+    function editableTarget(target: EventTarget | null) {
+      return (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      );
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      // Leave browser and system shortcuts such as Ctrl+H (history) and Cmd+H (hide) alone.
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.defaultPrevented || event.repeat || editableTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      if (self?.role === 'speaker' && key === 'm' && mic.status === 'on') {
+        event.preventDefault();
+        setMuted(!self.muted);
+      }
+      if (self?.role === 'listener' && key === 'h') {
+        event.preventDefault();
+        setHandRaised(!self.handRaised);
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mic.status, self?.handRaised, self?.muted, self?.role, setHandRaised, setMuted]);
 
   if (state.status === 'failed') {
     return (
@@ -227,7 +267,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
   const raisedHands = audience.filter((p) => p.handRaised).length;
 
   async function changeRole(peerId: string, role: Role) {
-    const problem = await session.setRole(peerId, role);
+    const problem = await setRole(peerId, role);
     setNotice(problem);
   }
 
@@ -294,7 +334,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
             <Notice tone="error">
               Microphone access is blocked, so you can listen but not talk. Allow the microphone in your
               browser&apos;s site settings, then{' '}
-              <button type="button" className={styles.inlineButton} onClick={session.retryMicrophone}>
+              <button type="button" className={styles.inlineButton} onClick={retryMicrophone}>
                 try again
               </button>
               .
@@ -343,7 +383,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
         </section>
       </div>
 
-      {Object.entries(session.remoteStreams).map(([peerId, stream]) => {
+      {Object.entries(remoteStreams).map(([peerId, stream]) => {
         const peer = state.participants.find((p) => p.peerId === peerId);
         const audible = peer !== undefined && peer.role === 'speaker' && !peer.muted;
         return <RemoteAudio key={peerId} stream={stream} audible={audible} onBlocked={onAudioBlocked} />;
@@ -363,7 +403,9 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
                 data-live={!self.muted}
                 aria-pressed={!self.muted}
                 disabled={mic.status !== 'on'}
-                onClick={() => session.setMuted(!self.muted)}
+                title={self.muted ? 'Unmute (M)' : 'Mute (M)'}
+                aria-keyshortcuts="M"
+                onClick={() => setMuted(!self.muted)}
               >
                 {self.muted ? <MicOff aria-hidden="true" /> : <Mic aria-hidden="true" />}
                 <span>{mic.status === 'requesting' ? 'Starting mic' : self.muted ? 'Unmute' : 'On air'}</span>
@@ -373,7 +415,9 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
                 variant={self.handRaised ? 'primary' : 'secondary'}
                 icon={<Hand aria-hidden="true" />}
                 aria-pressed={self.handRaised}
-                onClick={() => session.setHandRaised(!self.handRaised)}
+                title={self.handRaised ? 'Lower hand (H)' : 'Raise hand (H)'}
+                aria-keyshortcuts="H"
+                onClick={() => setHandRaised(!self.handRaised)}
               >
                 {self.handRaised ? 'Lower hand' : 'Raise hand'}
               </Button>
@@ -381,10 +425,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
             {self.role === 'speaker' && inputs.length > 1 && (
               <label className={styles.device}>
                 <span className="visually-hidden">Microphone</span>
-                <select
-                  value={mic.deviceId ?? ''}
-                  onChange={(event) => session.switchMicrophone(event.target.value)}
-                >
+                <select value={mic.deviceId ?? ''} onChange={(event) => switchMicrophone(event.target.value)}>
                   {inputs.map((input) => (
                     <option key={input.deviceId} value={input.deviceId}>
                       {input.label}
