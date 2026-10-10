@@ -1,0 +1,54 @@
+{
+  "name": "devsbooth",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted audio rooms for developers. Sign in with an email code, open a room, talk.",
+  "license": "MIT",
+  "author": "Daniel Tyukov",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danieltyukov/devsbooth.git"
+  },
+  "homepage": "https://danieltyukov.github.io/devsbooth/",
+  "bugs": {
+    "url": "https://github.com/danieltyukov/devsbooth/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "web",
+    "e2e"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n db,server,web -c gray,blue,magenta \"npm run dev:db -w server\" \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm run start -w server",
+    "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p web --noEmit && tsc -p e2e --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run test -w e2e",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "esbuild": "^0.28.2"
+  }
+}

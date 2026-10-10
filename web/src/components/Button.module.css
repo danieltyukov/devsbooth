@@ -1,0 +1,80 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-weight: 600;
+  font-size: var(--step-0);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.button[aria-busy='true'] {
+  cursor: progress;
+}
+
+.button svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.large {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: var(--step-1);
+  font-stretch: 90%;
+}
+
+.primary {
+  background: var(--console);
+  color: var(--on-console);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--console-strong);
+}
+
+.secondary {
+  background: var(--surface);
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--ink-faint);
+}
+
+.danger {
+  background: var(--onair);
+  color: var(--on-onair);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  padding-inline: 10px;
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--sunken);
+  color: var(--ink);
+}

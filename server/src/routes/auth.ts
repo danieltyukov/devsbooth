@@ -1,0 +1,80 @@
+import { Router, type RequestHandler } from 'express';
+import { z } from 'zod';
+import { LIMITS, type CodeChallenge } from '@devsbooth/shared';
+import { consumeCode, discardCode, issueCode } from '../auth/codes';
+import type { Mailer } from '../auth/mailer';
+import { clearSessionCookie, createSession, destroySession, setSessionCookie } from '../auth/sessions';
+import { HttpError, parse } from '../http/errors';
+import { log } from '../log';
+import { User } from '../models/user';
+import { toMe } from '../users/dto';
+
+const email = z
+  .string({ error: 'Enter your email address.' })
+  .trim()
+  .toLowerCase()
+  .max(LIMITS.emailMax, { error: 'That email address is too long.' })
+  .pipe(z.email({ error: 'Enter a valid email address.' }));
+
+const codeSchema = z.object({ email });
+const verifySchema = z.object({
+  email,
+  challenge: z.string({ error: 'Ask for a new code.' }).min(16).max(128),
+  code: z
+    .string({ error: 'Enter the code from the email.' })
+    .transform((value) => value.replace(/\s+/g, ''))
+    .pipe(
+      z.string().regex(new RegExp(`^\\d{${LIMITS.codeLength}}$`), {
+        error: `The code is ${LIMITS.codeLength} digits.`,
+      }),
+    ),
+});
+
+export function authRoutes(deps: {
+  mailer: Mailer;
+  secureCookies: boolean;
+  limiter: RequestHandler;
+  /** Called after logout, to disconnect the session's sockets. */
+  onLogout: (token: string) => void;
+}) {
+  const router = Router();
+
+  router.post('/code', deps.limiter, async (req, res) => {
+    const input = parse(codeSchema, req.body);
+    const { code, challenge } = await issueCode(input.email, req.ip ?? 'unknown');
+    try {
+      await deps.mailer.sendCode(input.email, code);
+    } catch (err) {
+      log.error('Could not send sign-in email', { err });
+      await discardCode(challenge);
+      throw new HttpError(502, 'internal', 'We could not send the email. Try again in a minute.');
+    }
+    const body: CodeChallenge = { challenge };
+    res.json(body);
+  });
+
+  router.post('/verify', deps.limiter, async (req, res) => {
+    const input = parse(verifySchema, req.body);
+    await consumeCode(input.email, input.code, input.challenge);
+    // An upsert, so two first sign-ins at once cannot both try to create the account.
+    const user = await User.findOneAndUpdate(
+      { email: input.email },
+      { $setOnInsert: { email: input.email, bio: '' } },
+      { upsert: true, returnDocument: 'after' },
+    );
+    const token = await createSession(user._id, req.get('user-agent') ?? '');
+    setSessionCookie(res, token, deps.secureCookies);
+    res.json({ user: toMe(user) });
+  });
+
+  router.post('/logout', async (req, res) => {
+    if (req.sessionToken) {
+      await destroySession(req.sessionToken);
+      deps.onLogout(req.sessionToken);
+    }
+    clearSessionCookie(res, deps.secureCookies);
+    res.status(204).end();
+  });
+
+  return router;
+}
