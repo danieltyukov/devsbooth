@@ -8,6 +8,8 @@ export interface LoginCodeFields {
   email: string;
   /** SHA-256 of the challenge token returned to the requesting browser. */
   challengeHash: string;
+  /** SHA-256 of the requester's IP address, for the per-requester quota. The address is not stored. */
+  requesterHash: string;
   salt: string;
   hash: string;
   /** Guesses made against this code, reserved before each comparison. */
@@ -23,6 +25,7 @@ const loginCodeSchema = new Schema<LoginCodeFields>(
   {
     email: { type: String, required: true },
     challengeHash: { type: String, required: true, unique: true },
+    requesterHash: { type: String, required: true },
     salt: { type: String, required: true },
     hash: { type: String, required: true },
     attempts: { type: Number, default: 0 },

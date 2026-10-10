@@ -6,9 +6,16 @@ import { LoginCode } from '../models/login-code';
 export const CODE_TTL_MS = 10 * 60 * 1000;
 /** Guesses allowed against one code. */
 export const MAX_ATTEMPTS = 3;
-/** Codes one address can be sent per window. Together with MAX_ATTEMPTS this bounds guessing. */
-export const MAX_CODES_PER_WINDOW = 6;
 export const CODE_WINDOW_MS = 60 * 60 * 1000;
+/** Codes one requester (IP address) can have sent to one address per window. */
+export const MAX_CODES_PER_REQUESTER = 5;
+/**
+ * Codes one address can be sent per window from all requesters together. With 8-digit codes and
+ * MAX_ATTEMPTS this bounds guessing to 60 per hour per address, about one chance in 70,000 per day
+ * of sustained attack. Keying the tighter quota on the requester means a single attacker cannot
+ * use up the quota of the address's owner.
+ */
+export const MAX_CODES_PER_ADDRESS = 20;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const hashCode = (salt: string, code: string) => createHmac('sha256', salt).update(code).digest('hex');
@@ -23,7 +30,7 @@ export interface IssuedCode {
  * Creates a new code for `email`. Earlier codes stay valid: each is bound to the
  * browser that requested it, so requesting a code cannot cancel someone else's.
  */
-export async function issueCode(email: string, now = new Date()): Promise<IssuedCode> {
+export async function issueCode(email: string, requester: string, now = new Date()): Promise<IssuedCode> {
   const code = randomInt(0, 10 ** LIMITS.codeLength)
     .toString()
     .padStart(LIMITS.codeLength, '0');
@@ -33,6 +40,7 @@ export async function issueCode(email: string, now = new Date()): Promise<Issued
   const record = await LoginCode.create({
     email,
     challengeHash: sha256(challenge),
+    requesterHash: sha256(requester),
     salt,
     hash: hashCode(salt, code),
     attempts: 0,
@@ -42,11 +50,12 @@ export async function issueCode(email: string, now = new Date()): Promise<Issued
   });
 
   // Insert first, then count: concurrent requests may all be refused, but never too many accepted.
-  const recent = await LoginCode.countDocuments({
-    email,
-    createdAt: { $gt: new Date(now.getTime() - CODE_WINDOW_MS) },
-  });
-  if (recent > MAX_CODES_PER_WINDOW) {
+  const since = new Date(now.getTime() - CODE_WINDOW_MS);
+  const [fromRequester, toAddress] = await Promise.all([
+    LoginCode.countDocuments({ email, requesterHash: record.requesterHash, createdAt: { $gt: since } }),
+    LoginCode.countDocuments({ email, createdAt: { $gt: since } }),
+  ]);
+  if (fromRequester > MAX_CODES_PER_REQUESTER || toAddress > MAX_CODES_PER_ADDRESS) {
     await record.deleteOne();
     throw new HttpError(
       429,
