@@ -1,0 +1,11 @@
+{
+  "name": "@devsbooth/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Types and constants shared by the DevsBooth server and web client.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

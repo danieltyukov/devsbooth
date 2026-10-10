@@ -1,0 +1,87 @@
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.dialog::backdrop {
+  background: rgb(15 20 28 / 55%);
+}
+
+.form {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+
+.title {
+  font-size: var(--step-3);
+}
+
+.types {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.type {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.type:has(input:checked) {
+  border-color: var(--console);
+  background: var(--console-wash);
+}
+
+.type:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.type input {
+  margin: 0;
+  accent-color: var(--console);
+}
+
+.typeIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--ink-soft);
+}
+
+.typeText {
+  display: grid;
+}
+
+.typeLabel {
+  font-weight: 600;
+}
+
+.typeDetail {
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

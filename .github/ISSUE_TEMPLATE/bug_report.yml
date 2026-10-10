@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go through a private advisory instead; see SECURITY.md.
+        Before pasting logs, remove email addresses, sign-in codes and cookies.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release or image tag, or the commit if you run from source.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run it
+      options:
+        - Docker Compose
+        - Docker image on its own
+        - From source (npm start)
+        - Development (npm run dev)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      description: For each person involved, if it is about a room.
+      placeholder: Firefox 143 on Ubuntu, Chrome 156 on Android
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log and browser console
+      description: Relevant lines from `docker compose logs app` and the browser's developer console.
+      render: text

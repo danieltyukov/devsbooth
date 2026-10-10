@@ -1,0 +1,33 @@
+.form {
+  display: grid;
+  gap: 20px;
+  max-width: 34rem;
+}
+
+.photo {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.photoActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.photoHint,
+.photoError {
+  flex-basis: 100%;
+  font-size: var(--step--1);
+}
+
+.photoHint {
+  color: var(--ink-faint);
+}
+
+.photoError {
+  color: var(--onair);
+  font-weight: 600;
+}

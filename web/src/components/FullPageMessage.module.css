@@ -1,0 +1,40 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 60dvh;
+  padding: var(--gutter);
+}
+
+.box {
+  max-width: 34rem;
+}
+
+.title {
+  font-size: var(--step-3);
+}
+
+.body {
+  margin-top: 12px;
+  color: var(--ink-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--onair);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
