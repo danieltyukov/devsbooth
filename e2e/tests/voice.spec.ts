@@ -15,8 +15,10 @@ test('people in a room hear each other, and the host runs the stage', async ({ b
   // The host's microphone starts muted; unmuting lights the on-air button.
   const hostMic = host.page.getByRole('button', { name: 'Unmute' });
   await expect(hostMic).toBeEnabled();
+  await expect(hostMic).toHaveAttribute('title', 'Unmute (M)');
   await hostMic.click();
   await expect(host.page.getByRole('button', { name: 'On air' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(host.page.getByRole('button', { name: 'On air' })).toHaveAttribute('title', 'Mute (M)');
 
   await guest.page.goto(url);
   const hostSeenByGuest = tile(guest.page, host.username);
@@ -27,10 +29,30 @@ test('people in a room hear each other, and the host runs the stage', async ({ b
   // The guest plays the host's audio only while the server lists the host as an unmuted speaker.
   await expect(guest.page.locator('audio[data-audible="true"]')).toHaveCount(1);
 
+  // Speakers can toggle mute from the keyboard.
+  await host.page.keyboard.press('M');
+  await expect(host.page.getByRole('button', { name: 'Unmute' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(hostSeenByGuest).toHaveAttribute('data-muted', 'true');
+  await host.page.keyboard.press('m');
+  await expect(host.page.getByRole('button', { name: 'On air' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(hostSeenByGuest).toHaveAttribute('data-muted', 'false');
+
   // The guest listens, and raises a hand.
   const guestSeenByHost = tile(host.page, guest.username);
   await expect(guestSeenByHost).toHaveAttribute('data-role', 'listener');
   await expect(guest.page.getByRole('button', { name: 'Unmute' })).toHaveCount(0);
+  await expect(guest.page.getByRole('button', { name: 'Raise hand' })).toHaveAttribute(
+    'title',
+    'Raise hand (H)',
+  );
+  await guest.page.keyboard.press('H');
+  await expect(guestSeenByHost).toHaveAttribute('data-hand', 'true');
+  await expect(guest.page.getByRole('button', { name: 'Lower hand' })).toHaveAttribute(
+    'title',
+    'Lower hand (H)',
+  );
+  await guest.page.keyboard.press('h');
+  await expect(guestSeenByHost).toHaveAttribute('data-hand', 'false');
   await guest.page.getByRole('button', { name: 'Raise hand' }).click();
   await expect(guestSeenByHost).toHaveAttribute('data-hand', 'true');
   await expect(host.page.getByText('1 hand up')).toBeVisible();
