@@ -1,45 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Participant } from '@devsbooth/shared';
 import { ConfigError, loadConfig } from '../src/config';
 import { RoomLifecycle } from '../src/realtime/lifecycle';
-import { Presence } from '../src/realtime/presence';
 import { newRoomId } from '../src/rooms/service';
-
-function participant(peerId: string, userId = peerId): Participant {
-  return {
-    peerId,
-    user: { id: userId, username: userId, name: userId, avatarUrl: null },
-    role: 'listener',
-    muted: true,
-    handRaised: false,
-  };
-}
-
-describe('Presence', () => {
-  it('tracks peers per room and reports when a room empties', () => {
-    const presence = new Presence();
-    presence.add('r1', participant('a'));
-    presence.add('r1', participant('b'));
-    presence.add('r2', participant('c'));
-    expect(presence.count('r1')).toBe(2);
-    expect(presence.roomOf('c')).toBe('r2');
-
-    expect(presence.remove('a')).toMatchObject({ roomId: 'r1', empty: false });
-    expect(presence.remove('b')).toMatchObject({ roomId: 'r1', empty: true });
-    expect(presence.count('r1')).toBe(0);
-    expect(presence.remove('b')).toBeNull();
-  });
-
-  it('updates and clears participants', () => {
-    const presence = new Presence();
-    presence.add('r', participant('a', 'u1'));
-    presence.add('r', participant('b', 'u1'));
-    expect(presence.peersOfUser('r', 'u1')).toHaveLength(2);
-    expect(presence.update({ peerId: 'a', muted: false })?.muted).toBe(false);
-    expect(presence.clear('r').map((p) => p.peerId)).toEqual(['a', 'b']);
-    expect(presence.roomOf('a')).toBeUndefined();
-  });
-});
 
 describe('RoomLifecycle', () => {
   afterEach(() => {
@@ -58,6 +20,17 @@ describe('RoomLifecycle', () => {
     vi.advanceTimersByTime(1);
     expect(expired).toEqual(['a']);
     expect(lifecycle.isScheduled('b')).toBe(false);
+  });
+
+  it('ensure keeps a running timer instead of restarting it', () => {
+    vi.useFakeTimers();
+    const expired: string[] = [];
+    const lifecycle = new RoomLifecycle(1_000, (id) => expired.push(id));
+    lifecycle.vacant('a');
+    vi.advanceTimersByTime(600);
+    lifecycle.ensure('a');
+    vi.advanceTimersByTime(400);
+    expect(expired).toEqual(['a']);
   });
 
   it('does nothing with a zero timeout', () => {

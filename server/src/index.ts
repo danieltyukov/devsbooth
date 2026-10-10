@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createApp } from './app';
 import { ConfigError, loadConfig } from './config';
 import { connectDb, disconnectDb } from './db';
+import { createRealtimeBackend } from './realtime/backend';
 import { log, setLogLevel } from './log';
 
 function loadDotEnv(): void {
@@ -25,7 +26,7 @@ async function main(): Promise<void> {
 
   // About a minute of retries covers a database container or the dev database still starting.
   await connectDb(config.mongoUri, 10);
-  const instance = createApp(config);
+  const instance = createApp(config, { backend: await createRealtimeBackend(config) });
   await instance.hub.scheduleIdleRooms();
 
   await new Promise<void>((resolve) => instance.server.listen(config.port, config.host, resolve));
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
     port: config.port,
     mail: config.mail.transport,
     web: config.webDist ? 'bundled' : 'api only',
+    presence: config.redis.url ? 'redis' : 'memory',
   });
 
   let stopping = false;

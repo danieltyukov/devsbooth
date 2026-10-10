@@ -64,7 +64,9 @@ Rooms end when the host ends them, or after staying empty for `ROOM_EMPTY_TTL` s
 
 ## Presence and signaling
 
-Presence lives in memory in the server process (`server/src/realtime/presence.ts`): which socket is in which room, with which role, mute state and raised hand. A socket is one browser tab; its id is the peer id.
+Presence records which socket is in which room, with which role, mute state and raised hand. A socket is one browser tab; its id is the peer id. `server/src/realtime/presence.ts` defines the store; by default it is a pair of maps in the server process.
+
+With `REDIS_URL`, presence moves to Redis (`redis-presence.ts`) so several processes share it, and the Socket.IO Redis adapter carries events between them. Changes that touch several keys run as Lua scripts, so they are atomic. Each process refreshes a heartbeat key; every few seconds one process takes a lock and sweeps the participants of any process whose heartbeat expired, telling their rooms they left. A graceful shutdown removes its own participants first. Each socket's events run through a queue, in order, because presence calls are asynchronous: two quick mute toggles cannot read the same stale state, and an offer stays ahead of its ICE candidates.
 
 The events are typed in `shared/src/realtime.ts`.
 
@@ -103,7 +105,7 @@ Each browser holds one `RTCPeerConnection` per other participant: a full mesh.
 
 Every pair of participants holds a connection, and every speaker uploads one copy of their audio per listener. That is fine for the conversations DevsBooth is for, and is why rooms are capped at `ROOM_MAX_PARTICIPANTS` (default 25). Larger rooms would need a selective forwarding unit (SFU) such as mediasoup or LiveKit, which is a good future project.
 
-Presence is per process, so one server process serves everyone. Running several would need a shared Socket.IO adapter and shared presence.
+None of this depends on how many server processes run: with `REDIS_URL`, any number share presence and relay each other's events.
 
 ## Web client
 

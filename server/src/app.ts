@@ -10,7 +10,8 @@ import { loadSession } from './auth/middleware';
 import type { Config } from './config';
 import { apiNotFound, errorHandler, HttpError } from './http/errors';
 import { sameOriginGuard } from './http/guard';
-import { createHub, type Hub, type IoServer } from './realtime/hub';
+import { memoryBackend, type RealtimeBackend } from './realtime/backend';
+import { createHub, type Hub, type HubOptions, type IoServer } from './realtime/hub';
 import { authRoutes } from './routes/auth';
 import { meRoutes } from './routes/me';
 import { metaRoutes } from './routes/meta';
@@ -29,6 +30,9 @@ export interface AppInstance {
 export interface AppOptions {
   /** Replaces the configured mail transport, for tests. */
   mailer?: Mailer;
+  /** Where realtime state lives. Defaults to memory, for a single process. */
+  backend?: RealtimeBackend;
+  hub?: HubOptions;
 }
 
 function contentSecurityPolicy(appUrl: URL) {
@@ -58,8 +62,12 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
   const io: IoServer = new Server(server, {
     serveClient: false,
     maxHttpBufferSize: 100_000,
+    // The client only uses WebSockets, which also means no sticky sessions behind a load balancer.
+    transports: ['websocket'],
   });
-  const hub = createHub(io, config);
+  const backend = options.backend ?? memoryBackend();
+  backend.attach(io);
+  const hub = createHub(io, config, backend.presence, options.hub);
   const mailer = options.mailer ?? createMailer(config);
 
   app.disable('x-powered-by');
@@ -137,14 +145,18 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
 
   app.use(errorHandler);
 
+  let closed = false;
   return {
     app,
     server,
     io,
     hub,
     async close() {
-      hub.close();
+      if (closed) return;
+      closed = true;
+      await hub.shutdown();
       await io.close();
+      await backend.close();
       if (server.listening) {
         await new Promise<void>((resolve) => server.close(() => resolve()));
       }

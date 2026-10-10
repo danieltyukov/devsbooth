@@ -30,6 +30,8 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT: z.coerce.number().int().min(0).default(30),
   API_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
   TRUST_PROXY: z.string().optional(),
+  REDIS_URL: z.string().min(1).optional(),
+  REDIS_PREFIX: z.string().min(1).default('devsbooth:'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
 });
 
@@ -65,6 +67,8 @@ export interface Config {
   /** API, avatar and page requests allowed per IP per minute. 0 disables the limit. */
   apiRateLimit: number;
   trustProxy: boolean | number | string;
+  /** Shared state for running several processes. Unset means one process, state in memory. */
+  redis: { url: string | undefined; prefix: string };
   logLevel: LogLevel;
 }
 
@@ -145,6 +149,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     authRateLimit: e.AUTH_RATE_LIMIT,
     apiRateLimit: e.API_RATE_LIMIT,
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    redis: { url: e.REDIS_URL, prefix: e.REDIS_PREFIX },
     logLevel: e.LOG_LEVEL,
   };
 }
