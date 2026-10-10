@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+data/
+.data/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+playwright-report/
+test-results/
+blob-report/
+e2e/.cache/
