@@ -1,0 +1,37 @@
+# DevsBooth with MongoDB. Copy .env.example to .env, then: docker compose up -d
+services:
+  app:
+    image: ghcr.io/danieltyukov/devsbooth:latest
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/devsbooth
+      APP_URL: ${APP_URL:-http://localhost:${PORT:-3000}}
+    ports:
+      - '${PORT:-3000}:3000'
+    volumes:
+      - app-data:/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    # The 8.0 line (the plain "mongo:8" tag) refuses to start on Linux 6.19 and newer
+    # (SERVER-121912). 8.2 does not have that problem.
+    image: mongo:8.2
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  app-data:
+  mongo-data:
