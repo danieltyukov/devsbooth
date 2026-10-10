@@ -30,7 +30,13 @@ const verifySchema = z.object({
     ),
 });
 
-export function authRoutes(deps: { mailer: Mailer; secureCookies: boolean; limiter: RequestHandler }) {
+export function authRoutes(deps: {
+  mailer: Mailer;
+  secureCookies: boolean;
+  limiter: RequestHandler;
+  /** Called after logout, to disconnect the session's sockets. */
+  onLogout: (token: string) => void;
+}) {
   const router = Router();
 
   router.post('/code', deps.limiter, async (req, res) => {
@@ -50,15 +56,22 @@ export function authRoutes(deps: { mailer: Mailer; secureCookies: boolean; limit
   router.post('/verify', deps.limiter, async (req, res) => {
     const input = parse(verifySchema, req.body);
     await consumeCode(input.email, input.code, input.challenge);
-    const user =
-      (await User.findOne({ email: input.email })) ?? (await User.create({ email: input.email, bio: '' }));
+    // An upsert, so two first sign-ins at once cannot both try to create the account.
+    const user = await User.findOneAndUpdate(
+      { email: input.email },
+      { $setOnInsert: { email: input.email, bio: '' } },
+      { upsert: true, returnDocument: 'after' },
+    );
     const token = await createSession(user._id, req.get('user-agent') ?? '');
     setSessionCookie(res, token, deps.secureCookies);
     res.json({ user: toMe(user) });
   });
 
   router.post('/logout', async (req, res) => {
-    if (req.sessionToken) await destroySession(req.sessionToken);
+    if (req.sessionToken) {
+      await destroySession(req.sessionToken);
+      deps.onLogout(req.sessionToken);
+    }
     clearSessionCookie(res, deps.secureCookies);
     res.status(204).end();
   });

@@ -89,7 +89,15 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
   api.use(express.json({ limit: '100kb' }));
   api.use(sameOriginGuard(config.appUrl.origin));
   api.use(loadSession(config.secureCookies));
-  api.use('/auth', authRoutes({ mailer, secureCookies: config.secureCookies, limiter }));
+  api.use(
+    '/auth',
+    authRoutes({
+      mailer,
+      secureCookies: config.secureCookies,
+      limiter,
+      onLogout: (token) => hub.dropSession(token),
+    }),
+  );
   api.use('/me', meRoutes({ avatarsDir: config.avatarsDir }));
   api.use('/users', userRoutes());
   api.use('/rooms', roomRoutes(hub));

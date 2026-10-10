@@ -9,7 +9,8 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Sessions are extended on use once less than this much time is left. */
 const SESSION_RENEW_MS = 15 * 24 * 60 * 60 * 1000;
 
-function hashToken(token: string): string {
+/** The stored form of a session token. Also identifies a session's sockets in memory. */
+export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
@@ -44,6 +45,11 @@ export async function findSession(token: string): Promise<ActiveSession | null> 
     renewed = true;
   }
   return { user, renewed };
+}
+
+/** Whether a session still exists and has not expired. */
+export async function sessionIsActive(tokenHash: string): Promise<boolean> {
+  return (await Session.exists({ tokenHash, expiresAt: { $gt: new Date() } })) !== null;
 }
 
 export async function destroySession(token: string): Promise<void> {

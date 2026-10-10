@@ -9,7 +9,7 @@ import type {
   ParticipantPatch,
   ServerToClientEvents,
 } from '@devsbooth/shared';
-import { SESSION_COOKIE, findSession } from '../auth/sessions';
+import { SESSION_COOKIE, findSession, hashToken, sessionIsActive } from '../auth/sessions';
 import type { Config } from '../config';
 import { log } from '../log';
 import type { UserDoc } from '../models/user';
@@ -28,6 +28,8 @@ import { Presence } from './presence';
 
 export interface SocketData {
   user: UserDoc;
+  /** Hash of the session this socket signed in with, so logging out can disconnect it. */
+  sessionHash: string;
 }
 
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
@@ -71,21 +73,39 @@ export interface Hub {
   endRoom(roomId: string): Promise<boolean>;
   /** After a restart nobody is connected, so every live room starts its empty-room timer. */
   scheduleIdleRooms(): Promise<void>;
+  /** Disconnects every socket opened with this session, after logout. */
+  dropSession(token: string): void;
   close(): void;
 }
 
 export function createHub(io: IoServer, config: Config): Hub {
   const presence = new Presence();
+  /**
+   * Rooms being ended, or ended in the last minute. A join that loaded the room before it was
+   * marked ended checks this after its own awaits, so it cannot slip into a dead room.
+   */
+  const ending = new Set<string>();
   const lifecycle = new RoomLifecycle(config.room.emptyTtlMs, (roomId) => {
-    endRoom(roomId).catch((err: unknown) => log.error('Could not end idle room', { room: roomId, err }));
+    endRoom(roomId).catch((err: unknown) => {
+      log.error('Could not end idle room, will retry', { room: roomId, err });
+      if (presence.count(roomId) === 0) lifecycle.vacant(roomId);
+    });
   });
 
   async function endRoom(roomId: string): Promise<boolean> {
+    ending.add(roomId);
+    let ended: boolean;
+    try {
+      ended = await markEnded(roomId);
+    } catch (err) {
+      ending.delete(roomId);
+      throw err;
+    }
     lifecycle.occupied(roomId);
-    const ended = await markEnded(roomId);
     io.to(channel(roomId)).emit('room:ended');
     presence.clear(roomId);
     io.in(channel(roomId)).socketsLeave(channel(roomId));
+    setTimeout(() => ending.delete(roomId), 60_000).unref();
     if (ended) log.info('Room ended', { room: roomId });
     return ended;
   }
@@ -112,6 +132,7 @@ export function createHub(io: IoServer, config: Config): Hub {
       if (!session) return next(new Error('unauthorized'));
       if (!session.user.username) return next(new Error('forbidden'));
       socket.data.user = session.user;
+      socket.data.sessionHash = hashToken(token!);
       next();
     } catch (err) {
       log.error('Socket authentication failed', { err });
@@ -131,6 +152,12 @@ export function createHub(io: IoServer, config: Config): Hub {
 
       try {
         leave(socket);
+        // Sessions can expire while a socket stays open.
+        if (!(await sessionIsActive(socket.data.sessionHash))) {
+          ack(fail('unauthorized', 'Your session has ended. Sign in again to join.'));
+          socket.disconnect(true);
+          return;
+        }
         const room = await findLiveRoom(roomId);
         if (!room) return ack(fail('room_ended', 'This room has ended, or the link is wrong.'));
         if (!(await canEnter(room, user))) {
@@ -156,6 +183,8 @@ export function createHub(io: IoServer, config: Config): Hub {
           muted: true,
           handRaised: false,
         };
+        // The host may have ended the room while this join was waiting on the database.
+        if (ending.has(roomId)) return ack(fail('room_ended', 'This room has ended.'));
         const participants = presence.list(roomId);
         presence.add(roomId, self);
         lifecycle.occupied(roomId);
@@ -239,6 +268,12 @@ export function createHub(io: IoServer, config: Config): Hub {
     async scheduleIdleRooms() {
       for (const roomId of await liveRoomIds()) {
         if (presence.count(roomId) === 0) lifecycle.vacant(roomId);
+      }
+    },
+    dropSession(token) {
+      const hash = hashToken(token);
+      for (const socket of io.sockets.sockets.values()) {
+        if (socket.data.sessionHash === hash) socket.disconnect(true);
       }
     },
     close: () => lifecycle.dispose(),

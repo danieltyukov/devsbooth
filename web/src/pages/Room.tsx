@@ -308,6 +308,11 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
             </Notice>
           </div>
         )}
+        {mic.error && (
+          <div className={styles.banner}>
+            <Notice tone="error">{mic.error}</Notice>
+          </div>
+        )}
         {notice && (
           <div className={styles.banner}>
             <Notice tone="error">{notice}</Notice>
