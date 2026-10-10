@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MAX_ATTEMPTS, MAX_CODES_PER_WINDOW } from '../src/auth/codes';
+import { issueCode, MAX_ATTEMPTS, MAX_CODES_PER_ADDRESS, MAX_CODES_PER_REQUESTER } from '../src/auth/codes';
 import { startTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -19,15 +19,16 @@ function verify(email: string, code: string, challenge: string) {
   return t.http.post('/api/auth/verify').send({ email, code, challenge });
 }
 
-const wrongCode = (code: string) => (code === '000000' ? '111111' : '000000');
+const wrongCode = (code: string) => (code === '00000000' ? '11111111' : '00000000');
 
 describe('sign-in codes', () => {
-  it('sends a six digit code and signs a new user in', async () => {
+  it('sends an eight digit code and signs a new user in', async () => {
     const { challenge, code } = await requestCode('Ada@Example.com ');
-    expect(code).toMatch(/^\d{6}$/);
+    expect(code).toMatch(/^\d{8}$/);
     expect(challenge.length).toBeGreaterThanOrEqual(32);
 
-    const res = await verify('ada@example.com', code, challenge).expect(200);
+    // Spaces are ignored, so a code copied as "1234 5678" works.
+    const res = await verify('ada@example.com', `${code.slice(0, 4)} ${code.slice(4)}`, challenge).expect(200);
     expect(res.body.user).toMatchObject({ email: 'ada@example.com', username: null, onboarded: false });
 
     const cookie = (res.headers['set-cookie'] as unknown as string[])[0]!;
@@ -73,19 +74,35 @@ describe('sign-in codes', () => {
     expect(after.body.error).toMatchObject({ code: 'code_expired', message: expect.stringMatching(/attempts/) });
   });
 
-  it('caps the codes sent to one address per hour', async () => {
-    for (let i = 0; i < MAX_CODES_PER_WINDOW; i++) await requestCode('flood@example.com');
+  it('caps the codes one requester can have sent to an address', async () => {
+    for (let i = 0; i < MAX_CODES_PER_REQUESTER; i++) await requestCode('flood@example.com');
     const res = await t.http.post('/api/auth/code').send({ email: 'flood@example.com' }).expect(429);
     expect(res.body.error.code).toBe('too_many_requests');
     // Other addresses are unaffected.
     await requestCode('calm@example.com');
   });
 
+  it('does not let one requester use up the quota of the address owner', async () => {
+    for (let i = 0; i < MAX_CODES_PER_REQUESTER; i++) await issueCode('owner@example.com', 'attacker-ip');
+    await expect(issueCode('owner@example.com', 'attacker-ip')).rejects.toThrow(/Too many codes/);
+    await expect(issueCode('owner@example.com', 'owner-ip')).resolves.toHaveProperty('challenge');
+  });
+
+  it('caps the codes sent to an address from all requesters', async () => {
+    let sent = 0;
+    for (let ip = 0; sent < MAX_CODES_PER_ADDRESS; ip++) {
+      for (let i = 0; i < MAX_CODES_PER_REQUESTER && sent < MAX_CODES_PER_ADDRESS; i++, sent++) {
+        await issueCode('popular@example.com', `ip-${ip}`);
+      }
+    }
+    await expect(issueCode('popular@example.com', 'fresh-ip')).rejects.toThrow(/Too many codes/);
+  });
+
   it('caps concurrent requests too', async () => {
     const results = await Promise.all(
       Array.from({ length: 15 }, () => t.http.post('/api/auth/code').send({ email: 'burst@example.com' })),
     );
-    expect(results.filter((res) => res.status === 200).length).toBeLessThanOrEqual(MAX_CODES_PER_WINDOW);
+    expect(results.filter((res) => res.status === 200).length).toBeLessThanOrEqual(MAX_CODES_PER_REQUESTER);
   });
 
   it('accepts a code only once and retires the other codes for the address', async () => {

@@ -1,7 +1,7 @@
 /** Input rules shared by server validation and client forms. */
 export const LIMITS = {
   emailMax: 254,
-  codeLength: 6,
+  codeLength: 8,
   nameMax: 50,
   usernameMin: 3,
   usernameMax: 20,

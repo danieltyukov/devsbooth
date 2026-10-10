@@ -25,8 +25,9 @@ export function codeEmail(email: string, code: string, appUrl: URL): CodeEmail {
     '',
     appUrl.origin,
   ].join('\n');
+  const grouped = code.replace(/(\d{4})(?=\d)/g, '$1 ');
   const html = `<p>Your DevsBooth sign-in code is</p>
-<p style="font-size:28px;font-weight:700;letter-spacing:6px;font-family:monospace">${code}</p>
+<p style="font-size:28px;font-weight:700;letter-spacing:4px;font-family:monospace">${grouped}</p>
 <p>It expires in ${minutes} minutes. If you did not ask for it, you can ignore this email.</p>
 <p><a href="${appUrl.origin}">${appUrl.host}</a></p>`;
   return { to: email, subject: `${code} is your DevsBooth code`, text, html };

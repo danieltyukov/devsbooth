@@ -22,8 +22,12 @@ const verifySchema = z.object({
   challenge: z.string({ error: 'Ask for a new code.' }).min(16).max(128),
   code: z
     .string({ error: 'Enter the code from the email.' })
-    .trim()
-    .regex(new RegExp(`^\\d{${LIMITS.codeLength}}$`), { error: `The code is ${LIMITS.codeLength} digits.` }),
+    .transform((value) => value.replace(/\s+/g, ''))
+    .pipe(
+      z
+        .string()
+        .regex(new RegExp(`^\\d{${LIMITS.codeLength}}$`), { error: `The code is ${LIMITS.codeLength} digits.` }),
+    ),
 });
 
 export function authRoutes(deps: { mailer: Mailer; secureCookies: boolean; limiter: RequestHandler }) {
@@ -31,7 +35,7 @@ export function authRoutes(deps: { mailer: Mailer; secureCookies: boolean; limit
 
   router.post('/code', deps.limiter, async (req, res) => {
     const input = parse(codeSchema, req.body);
-    const { code, challenge } = await issueCode(input.email);
+    const { code, challenge } = await issueCode(input.email, req.ip ?? 'unknown');
     try {
       await deps.mailer.sendCode(input.email, code);
     } catch (err) {
