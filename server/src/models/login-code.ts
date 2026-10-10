@@ -4,9 +4,16 @@ export interface LoginCodeFields {
   email: string;
   salt: string;
   hash: string;
+  /** Wrong guesses against the current code. */
   attempts: number;
   sentAt: Date;
+  /** When the current code stops working. */
   expiresAt: Date;
+  /** Wrong guesses for this address since `windowStartedAt`, across re-sent codes. */
+  failures: number;
+  windowStartedAt: Date;
+  /** When MongoDB deletes the record: after the code expires and the failure window closes. */
+  purgeAt: Date;
 }
 
 const loginCodeSchema = new Schema<LoginCodeFields>({
@@ -15,8 +22,10 @@ const loginCodeSchema = new Schema<LoginCodeFields>({
   hash: { type: String, required: true },
   attempts: { type: Number, default: 0 },
   sentAt: { type: Date, required: true },
-  // MongoDB removes the document once this date passes.
-  expiresAt: { type: Date, required: true, expires: 0 },
+  expiresAt: { type: Date, required: true },
+  failures: { type: Number, default: 0 },
+  windowStartedAt: { type: Date, required: true },
+  purgeAt: { type: Date, required: true, expires: 0 },
 });
 
 export const LoginCode = model<LoginCodeFields>('LoginCode', loginCodeSchema, 'login_codes');
