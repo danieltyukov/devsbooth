@@ -1,0 +1,724 @@
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url(fonts/archivo-latin-wdth-normal.woff2) format('woff2');
+}
+
+:root {
+  color-scheme: light dark;
+
+  --panel: #eef0f2;
+  --surface: #f9fafb;
+  --sunken: #e3e7eb;
+  --rule: #cbd2da;
+  --rule-strong: #aab4c0;
+  --ink: #1b2430;
+  --ink-soft: #445064;
+  --ink-faint: #5d697a;
+  --console: #3d5a80;
+  --console-strong: #2c4566;
+  --on-console: #fff;
+  --onair: #d63a32;
+  --onair-wash: #fbe4e2;
+  --meter: #2a9963;
+  --meter-hot: #d49b16;
+  --meter-off: #d2d8df;
+
+  --focus: var(--console);
+  --shadow: 0 1px 0 rgb(27 36 48 / 6%), 0 18px 40px -22px rgb(27 36 48 / 38%);
+
+  --font: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:
+    ui-monospace, 'SFMono-Regular', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --measure: 1120px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --panel: #15181d;
+    --surface: #1c2128;
+    --sunken: #101317;
+    --rule: #2c333d;
+    --rule-strong: #3d4653;
+    --ink: #e7ebf0;
+    --ink-soft: #b4bdc9;
+    --ink-faint: #8f99a7;
+    --console: #8fb3e0;
+    --console-strong: #b4cdee;
+    --on-console: #0f1722;
+    --onair: #ff6b5f;
+    --onair-wash: #3a1f1d;
+    --meter: #3dd68c;
+    --meter-hot: #f2c14e;
+    --meter-off: #2a3038;
+    --shadow: 0 1px 0 rgb(0 0 0 / 30%), 0 20px 44px -20px rgb(0 0 0 / 70%);
+  }
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-stretch: 100%;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--console);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  color: var(--console-strong);
+  text-decoration-thickness: 2px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+figure {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+code,
+pre {
+  font-family: var(--mono);
+}
+
+code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--sunken);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  background: var(--sunken);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  tab-size: 2;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  overflow-wrap: normal;
+}
+
+.wrap {
+  width: min(var(--measure), 100% - 2 * var(--gutter));
+  margin-inline: auto;
+}
+
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 10px 14px;
+  border-radius: var(--radius-s);
+  background: var(--console);
+  color: var(--on-console);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip:focus {
+  transform: none;
+}
+
+/* Header */
+
+.masthead {
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--ink);
+}
+
+.mark {
+  flex: none;
+}
+
+.wordmark {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.nav {
+  display: flex;
+  gap: clamp(14px, 3vw, 28px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav a {
+  color: var(--ink-soft);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* Hero */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: clamp(36px, 5vw, 64px);
+  padding-top: clamp(40px, 7vw, 88px);
+}
+
+.hero-copy {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  column-gap: clamp(16px, 2vw, 22px);
+}
+
+.hero-copy > :not(.meter) {
+  grid-column: 2;
+}
+
+.hero h1 {
+  grid-row: 1;
+  font-size: clamp(2.9rem, 6.2vw, 5rem);
+  font-stretch: 64%;
+  line-height: 0.94;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 32rem;
+  margin-top: 24px;
+  color: var(--ink-soft);
+  font-size: clamp(1.125rem, 1.6vw, 1.25rem);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-size: 1.125rem;
+  font-weight: 650;
+  font-stretch: 90%;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.primary {
+  background: var(--console);
+  color: var(--on-console);
+}
+
+.primary:hover {
+  background: var(--console-strong);
+  color: var(--on-console);
+}
+
+.secondary {
+  border-color: var(--rule-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.secondary:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+
+/* Screenshots sit in a faceplate: hairline rule, rounded corners, soft shadow. */
+.faceplate {
+  overflow: hidden;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.faceplate img {
+  width: 100%;
+}
+
+/* The app centres its content, so trim the empty margins at the sides of the room. */
+.hero-shot img {
+  aspect-ratio: 1140 / 940;
+  object-fit: cover;
+}
+
+/*
+ * The level meter beside the headline: ten segments, green with an amber top pair.
+ * One layer draws the unlit segments, a second draws the lit ones and is clipped
+ * from the top in whole-segment steps, like a speaking voice.
+ */
+.meter {
+  position: relative;
+  grid-row: 1;
+  grid-column: 1;
+  width: 10px;
+  margin-block: 0.35rem 0.6rem;
+}
+
+.meter::before,
+.meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  -webkit-mask: repeating-linear-gradient(to top, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  mask: repeating-linear-gradient(to top, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+}
+
+.meter::before {
+  background: var(--meter-off);
+}
+
+.meter::after {
+  background: linear-gradient(to top, var(--meter) 0 80%, var(--meter-hot) 80% 100%);
+  clip-path: inset(60% 0 0 0);
+  animation: talk 3.2s steps(1, end) infinite;
+}
+
+@keyframes talk {
+  0% {
+    clip-path: inset(60% 0 0 0);
+  }
+  6% {
+    clip-path: inset(40% 0 0 0);
+  }
+  11% {
+    clip-path: inset(30% 0 0 0);
+  }
+  16% {
+    clip-path: inset(50% 0 0 0);
+  }
+  21% {
+    clip-path: inset(30% 0 0 0);
+  }
+  26% {
+    clip-path: inset(10% 0 0 0);
+  }
+  31% {
+    clip-path: inset(40% 0 0 0);
+  }
+  36% {
+    clip-path: inset(60% 0 0 0);
+  }
+  41% {
+    clip-path: inset(80% 0 0 0);
+  }
+  46% {
+    clip-path: inset(100% 0 0 0);
+  }
+  56% {
+    clip-path: inset(70% 0 0 0);
+  }
+  61% {
+    clip-path: inset(40% 0 0 0);
+  }
+  66% {
+    clip-path: inset(20% 0 0 0);
+  }
+  71% {
+    clip-path: inset(40% 0 0 0);
+  }
+  76% {
+    clip-path: inset(30% 0 0 0);
+  }
+  81% {
+    clip-path: inset(50% 0 0 0);
+  }
+  86% {
+    clip-path: inset(70% 0 0 0);
+  }
+  91% {
+    clip-path: inset(90% 0 0 0);
+  }
+  96% {
+    clip-path: inset(100% 0 0 0);
+  }
+  100% {
+    clip-path: inset(60% 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter::after {
+    animation: none;
+    clip-path: inset(40% 0 0 0);
+  }
+
+  .button {
+    transition: none;
+  }
+}
+
+/* Sections */
+
+.section {
+  margin-top: clamp(72px, 10vw, 120px);
+  padding-top: 28px;
+  border-top: 2px solid var(--ink);
+  scroll-margin-top: 16px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: 32px clamp(32px, 5vw, 72px);
+  align-items: start;
+}
+
+.split-even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.section h2 {
+  color: var(--ink);
+  font-size: clamp(2.1rem, 4.2vw, 2.9rem);
+  font-stretch: 66%;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+}
+
+.section h3 {
+  font-size: 1.375rem;
+  font-weight: 750;
+  font-stretch: 72%;
+  line-height: 1.1;
+}
+
+.prose {
+  color: var(--ink-soft);
+}
+
+.prose > * + * {
+  margin-top: 16px;
+}
+
+.prose > h2 + * {
+  margin-top: 20px;
+}
+
+.prose > h3 {
+  margin-top: 36px;
+  color: var(--ink);
+}
+
+.prose > h3 + * {
+  margin-top: 12px;
+}
+
+/* Definition lists: roles stack, specs read as a two-column sheet. */
+
+dl {
+  margin: 0;
+}
+
+dd {
+  margin: 0;
+}
+
+.roles {
+  margin-top: 28px;
+}
+
+.prose > .roles {
+  margin-top: 28px;
+  margin-bottom: 28px;
+}
+
+.roles > div {
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.roles > div:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.roles dt,
+.spec dt {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-stretch: 85%;
+  line-height: 1.3;
+}
+
+.roles dd {
+  margin-top: 4px;
+}
+
+.spec > div {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 4px 20px;
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.spec > div:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.spec dt {
+  padding-top: 1px;
+}
+
+.types > div {
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+}
+
+.side-shot figcaption {
+  margin-top: 10px;
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+}
+
+/* Show the header and the first three rows of the rooms list, without the empty side margins. */
+.crop {
+  aspect-ratio: 1100 / 458;
+}
+
+.crop picture {
+  display: block;
+}
+
+/* Scale the 1280px shot so its middle 1100px fill the frame. */
+.crop img {
+  width: 116.3636%;
+  max-width: none;
+  margin-left: -9.0909%;
+}
+
+/* Self-hosting */
+
+.note {
+  padding: 16px 18px 18px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.prose > .note {
+  margin-top: 28px;
+  margin-bottom: 28px;
+}
+
+.note h3 {
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  color: var(--ink-soft);
+}
+
+.steps > li {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 18px 0 24px;
+  border-top: 1px solid var(--rule);
+  counter-increment: step;
+}
+
+.steps > li:first-child {
+  padding-top: 6px;
+  border-top: 0;
+}
+
+.steps > li::before {
+  content: counter(step);
+  grid-row: 1 / span 10;
+  color: var(--console);
+  font-size: 2.75rem;
+  font-weight: 800;
+  font-stretch: 62%;
+  line-height: 0.9;
+}
+
+.steps > li > * {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.steps h3 {
+  color: var(--ink);
+  padding-top: 4px;
+}
+
+.steps p {
+  margin-top: 12px;
+}
+
+/* Footer */
+
+.footer {
+  margin-top: clamp(80px, 12vw, 144px);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding-block: 28px 40px;
+}
+
+.footer .wordmark {
+  font-size: 1.0625rem;
+}
+
+.footer-inner > :last-child {
+  margin-left: auto;
+}
+
+/* Layout changes */
+
+@media (max-width: 900px) {
+  .hero,
+  .split,
+  .split-even {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-copy {
+    max-width: 36rem;
+  }
+}
+
+@media (max-width: 600px) {
+  /* On a phone, show the stage and the On air bar at a readable size. */
+  .hero-shot img {
+    aspect-ratio: 720 / 940;
+    object-position: 17.86% 0;
+  }
+
+  .steps > li {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+  }
+
+  .steps > li::before {
+    font-size: 2.25rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .spec > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .types > div {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+  }
+
+  .footer-inner > :last-child {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
