@@ -48,3 +48,19 @@
 .actions {
   margin-top: 8px;
 }
+
+.rooms {
+  margin-top: 48px;
+}
+
+.roomsTitle {
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
+  font-size: var(--step-2);
+}
+
+.roomList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

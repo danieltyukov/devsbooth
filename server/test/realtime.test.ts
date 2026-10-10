@@ -217,6 +217,21 @@ describe('roles and state', () => {
   });
 });
 
+describe('room details', () => {
+  it('tells everyone in the room when the host changes the topic', async () => {
+    const room = await createRoom();
+    const b = await t.socket(guest.cookie);
+    await emitWithAck(b, 'room:join', { roomId: room.id });
+    const updated = next(b, 'room:updated');
+    await t.http
+      .patch(`/api/rooms/${room.id}`)
+      .set('Cookie', host.cookie)
+      .send({ topic: 'A new angle' })
+      .expect(200);
+    expect(await updated).toEqual({ topic: 'A new angle' });
+  });
+});
+
 describe('ending rooms', () => {
   it('sends everyone home when the host ends the room', async () => {
     const room = await createRoom();
