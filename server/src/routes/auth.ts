@@ -1,7 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
-import { LIMITS } from '@devsbooth/shared';
-import { consumeCode, issueCode } from '../auth/codes';
+import { LIMITS, type CodeChallenge } from '@devsbooth/shared';
+import { consumeCode, discardCode, issueCode } from '../auth/codes';
 import type { Mailer } from '../auth/mailer';
 import { clearSessionCookie, createSession, destroySession, setSessionCookie } from '../auth/sessions';
 import { HttpError, parse } from '../http/errors';
@@ -19,6 +19,7 @@ const email = z
 const codeSchema = z.object({ email });
 const verifySchema = z.object({
   email,
+  challenge: z.string({ error: 'Ask for a new code.' }).min(16).max(128),
   code: z
     .string({ error: 'Enter the code from the email.' })
     .trim()
@@ -30,19 +31,21 @@ export function authRoutes(deps: { mailer: Mailer; secureCookies: boolean; limit
 
   router.post('/code', deps.limiter, async (req, res) => {
     const input = parse(codeSchema, req.body);
-    const code = await issueCode(input.email);
+    const { code, challenge } = await issueCode(input.email);
     try {
       await deps.mailer.sendCode(input.email, code);
     } catch (err) {
       log.error('Could not send sign-in email', { err });
+      await discardCode(challenge);
       throw new HttpError(502, 'internal', 'We could not send the email. Try again in a minute.');
     }
-    res.status(204).end();
+    const body: CodeChallenge = { challenge };
+    res.json(body);
   });
 
   router.post('/verify', deps.limiter, async (req, res) => {
     const input = parse(verifySchema, req.body);
-    await consumeCode(input.email, input.code);
+    await consumeCode(input.email, input.code, input.challenge);
     const user =
       (await User.findOne({ email: input.email })) ?? (await User.create({ email: input.email, bio: '' }));
     const token = await createSession(user._id, req.get('user-agent') ?? '');

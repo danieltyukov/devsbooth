@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { consumeCode, issueCode, MAX_ATTEMPTS, MAX_FAILURES, RESEND_COOLDOWN_MS } from '../src/auth/codes';
-import { HttpError } from '../src/http/errors';
+import { MAX_ATTEMPTS, MAX_CODES_PER_WINDOW } from '../src/auth/codes';
 import { startTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -11,16 +10,24 @@ afterAll(async () => {
   await t.close();
 });
 
+async function requestCode(email: string): Promise<{ challenge: string; code: string }> {
+  const res = await t.http.post('/api/auth/code').send({ email }).expect(200);
+  return { challenge: res.body.challenge as string, code: t.lastCode(email.trim().toLowerCase()) };
+}
+
+function verify(email: string, code: string, challenge: string) {
+  return t.http.post('/api/auth/verify').send({ email, code, challenge });
+}
+
+const wrongCode = (code: string) => (code === '000000' ? '111111' : '000000');
+
 describe('sign-in codes', () => {
   it('sends a six digit code and signs a new user in', async () => {
-    await t.http.post('/api/auth/code').send({ email: 'Ada@Example.com ' }).expect(204);
-    const code = t.lastCode('ada@example.com');
+    const { challenge, code } = await requestCode('Ada@Example.com ');
     expect(code).toMatch(/^\d{6}$/);
+    expect(challenge.length).toBeGreaterThanOrEqual(32);
 
-    const res = await t.http
-      .post('/api/auth/verify')
-      .send({ email: 'ada@example.com', code })
-      .expect(200);
+    const res = await verify('ada@example.com', code, challenge).expect(200);
     expect(res.body.user).toMatchObject({ email: 'ada@example.com', username: null, onboarded: false });
 
     const cookie = (res.headers['set-cookie'] as unknown as string[])[0]!;
@@ -46,74 +53,49 @@ describe('sign-in codes', () => {
     expect(res.body.error.fields.email).toBeTruthy();
   });
 
-  it('refuses a second code within the cooldown', async () => {
-    await t.http.post('/api/auth/code').send({ email: 'linus@example.com' }).expect(204);
-    const res = await t.http.post('/api/auth/code').send({ email: 'linus@example.com' }).expect(429);
-    expect(res.body.error.code).toBe('too_many_requests');
+  it('needs the challenge from the browser that asked for the code', async () => {
+    const victim = await requestCode('victim@example.com');
+    const attacker = await requestCode('victim@example.com');
+    // The right code with someone else's challenge does not work...
+    const res = await verify('victim@example.com', victim.code, attacker.challenge).expect(400);
+    expect(res.body.error.code).toBe('code_invalid');
+    // ...and the attacker's request did not cancel the victim's code.
+    await verify('victim@example.com', victim.code, victim.challenge).expect(200);
   });
 
-  it('rejects a wrong code and burns the code after too many attempts', async () => {
-    await t.http.post('/api/auth/code').send({ email: 'margaret@example.com' }).expect(204);
-    const right = t.lastCode('margaret@example.com');
-    const wrong = right === '000000' ? '111111' : '000000';
-
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const res = await t.http
-        .post('/api/auth/verify')
-        .send({ email: 'margaret@example.com', code: wrong })
-        .expect(400);
-      expect(res.body.error.code).toBe('code_invalid');
-    }
-    const res = await t.http
-      .post('/api/auth/verify')
-      .send({ email: 'margaret@example.com', code: right })
-      .expect(400);
-    expect(res.body.error.code).toBe('code_expired');
-  });
-
-  it('caps parallel guesses at the per-code limit', async () => {
-    await t.http.post('/api/auth/code').send({ email: 'race@example.com' }).expect(204);
-    const right = t.lastCode('race@example.com');
-    const wrong = right === '000000' ? '111111' : '000000';
+  it('burns a code after too many wrong attempts, even in parallel', async () => {
+    const { challenge, code } = await requestCode('race@example.com');
     const results = await Promise.all(
-      Array.from({ length: 20 }, () =>
-        t.http.post('/api/auth/verify').send({ email: 'race@example.com', code: wrong }),
-      ),
+      Array.from({ length: 20 }, () => verify('race@example.com', wrongCode(code), challenge)),
     );
-    const invalid = results.filter((res) => res.body.error?.code === 'code_invalid');
-    expect(invalid).toHaveLength(MAX_ATTEMPTS);
-    await t.http.post('/api/auth/verify').send({ email: 'race@example.com', code: right }).expect(400);
+    expect(results.filter((res) => res.body.error?.code === 'code_invalid')).toHaveLength(MAX_ATTEMPTS);
+    const after = await verify('race@example.com', code, challenge).expect(400);
+    expect(after.body.error).toMatchObject({ code: 'code_expired', message: expect.stringMatching(/attempts/) });
   });
 
-  it('keeps counting failures across re-sent codes', async () => {
-    const email = 'persistent@example.com';
-    const errorCode = async (promise: Promise<unknown>) => {
-      try {
-        await promise;
-        return 'ok';
-      } catch (err) {
-        return err instanceof HttpError ? err.code : 'other';
-      }
-    };
-    let now = Date.now();
-    let failures = 0;
-    while (failures < MAX_FAILURES) {
-      const code = await issueCode(email, new Date(now));
-      const wrong = code === '000000' ? '111111' : '000000';
-      for (let i = 0; i < MAX_ATTEMPTS && failures < MAX_FAILURES; i++, failures++) {
-        expect(await errorCode(consumeCode(email, wrong, new Date(now)))).toBe('code_invalid');
-      }
-      now += RESEND_COOLDOWN_MS + 1;
-    }
-    expect(await errorCode(issueCode(email, new Date(now)))).toBe('too_many_requests');
+  it('caps the codes sent to one address per hour', async () => {
+    for (let i = 0; i < MAX_CODES_PER_WINDOW; i++) await requestCode('flood@example.com');
+    const res = await t.http.post('/api/auth/code').send({ email: 'flood@example.com' }).expect(429);
+    expect(res.body.error.code).toBe('too_many_requests');
+    // Other addresses are unaffected.
+    await requestCode('calm@example.com');
   });
 
-  it('accepts a code only once', async () => {
-    await t.http.post('/api/auth/code').send({ email: 'ken@example.com' }).expect(204);
-    const code = t.lastCode('ken@example.com');
-    await t.http.post('/api/auth/verify').send({ email: 'ken@example.com', code }).expect(200);
-    const res = await t.http.post('/api/auth/verify').send({ email: 'ken@example.com', code }).expect(400);
-    expect(res.body.error.code).toBe('code_expired');
+  it('caps concurrent requests too', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 15 }, () => t.http.post('/api/auth/code').send({ email: 'burst@example.com' })),
+    );
+    expect(results.filter((res) => res.status === 200).length).toBeLessThanOrEqual(MAX_CODES_PER_WINDOW);
+  });
+
+  it('accepts a code only once and retires the other codes for the address', async () => {
+    const first = await requestCode('ken@example.com');
+    const second = await requestCode('ken@example.com');
+    await verify('ken@example.com', second.code, second.challenge).expect(200);
+    const replay = await verify('ken@example.com', second.code, second.challenge).expect(400);
+    expect(replay.body.error.code).toBe('code_expired');
+    const stale = await verify('ken@example.com', first.code, first.challenge).expect(400);
+    expect(stale.body.error.code).toBe('code_expired');
   });
 
   it('logs out by deleting the session', async () => {
@@ -135,7 +117,7 @@ describe('request guard', () => {
   });
 
   it('accepts requests from the app origin', async () => {
-    await t.http.post('/api/auth/code').set('Origin', t.origin).send({ email: 'y@example.com' }).expect(204);
+    await t.http.post('/api/auth/code').set('Origin', t.origin).send({ email: 'y@example.com' }).expect(200);
   });
 
   it('rejects form-encoded bodies', async () => {
