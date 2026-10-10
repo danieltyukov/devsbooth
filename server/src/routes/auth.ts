@@ -24,9 +24,9 @@ const verifySchema = z.object({
     .string({ error: 'Enter the code from the email.' })
     .transform((value) => value.replace(/\s+/g, ''))
     .pipe(
-      z
-        .string()
-        .regex(new RegExp(`^\\d{${LIMITS.codeLength}}$`), { error: `The code is ${LIMITS.codeLength} digits.` }),
+      z.string().regex(new RegExp(`^\\d{${LIMITS.codeLength}}$`), {
+        error: `The code is ${LIMITS.codeLength} digits.`,
+      }),
     ),
 });
 

@@ -110,7 +110,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const dataDir = path.resolve(e.DATA_DIR);
   const transport = e.MAIL_TRANSPORT ?? (e.SMTP_URL ? 'smtp' : 'log');
   if (transport === 'smtp' && !e.SMTP_URL) {
-    throw new ConfigError('MAIL_TRANSPORT=smtp needs SMTP_URL, for example smtps://user:pass@smtp.example.com:465');
+    throw new ConfigError(
+      'MAIL_TRANSPORT=smtp needs SMTP_URL, for example smtps://user:pass@smtp.example.com:465',
+    );
   }
 
   return {

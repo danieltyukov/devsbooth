@@ -25,7 +25,8 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
  * A restart forgets the key, which only resets the hourly per-requester counts.
  */
 const requesterKey = randomBytes(32);
-const pseudonymize = (requester: string) => createHmac('sha256', requesterKey).update(requester).digest('hex');
+const pseudonymize = (requester: string) =>
+  createHmac('sha256', requesterKey).update(requester).digest('hex');
 const hashCode = (salt: string, code: string) => createHmac('sha256', salt).update(code).digest('hex');
 
 export interface IssuedCode {
