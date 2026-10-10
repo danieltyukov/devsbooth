@@ -39,8 +39,18 @@ export function GuestOnly() {
   return <Outlet />;
 }
 
-/** Returns a same-site path from `?next=`, ignoring anything that would leave the app. */
+/**
+ * Returns a same-origin path from `?next=`, ignoring anything that would leave the app.
+ * Resolving with URL catches tricks a prefix check misses, such as "/\t/evil.example",
+ * which browsers turn into "//evil.example" by stripping the tab.
+ */
 export function safeNext(value: string | null, fallback = '/rooms'): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return fallback;
-  return value;
+  if (!value || !value.startsWith('/')) return fallback;
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
 }

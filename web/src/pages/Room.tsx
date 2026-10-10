@@ -43,7 +43,19 @@ export function RoomPage() {
   );
 }
 
-function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {
+interface RemoteAudioProps {
+  stream: MediaStream;
+  /** Whether the server says this peer may be heard right now: an unmuted speaker. */
+  audible: boolean;
+  onBlocked: () => void;
+}
+
+/**
+ * Plays one peer's audio. Audio travels peer to peer, so a modified client could send sound
+ * while listed as a listener or muted; every receiver therefore plays a peer only while the
+ * server's room state says they are an unmuted speaker.
+ */
+function RemoteAudio({ stream, audible, onBlocked }: RemoteAudioProps) {
   const ref = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     const element = ref.current;
@@ -51,7 +63,10 @@ function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: ()
     element.srcObject = stream;
     element.play().catch(() => onBlocked());
   }, [stream, onBlocked]);
-  return <audio ref={ref} autoPlay data-remote-audio />;
+  useEffect(() => {
+    if (ref.current) ref.current.muted = !audible;
+  }, [audible]);
+  return <audio ref={ref} autoPlay muted={!audible} data-remote-audio data-audible={audible} />;
 }
 
 interface TileProps {
@@ -323,9 +338,11 @@ function RoomSession({ roomId, iceServers, onRejoin }: SessionProps) {
         </section>
       </div>
 
-      {Object.entries(session.remoteStreams).map(([peerId, stream]) => (
-        <RemoteAudio key={peerId} stream={stream} onBlocked={onAudioBlocked} />
-      ))}
+      {Object.entries(session.remoteStreams).map(([peerId, stream]) => {
+        const peer = state.participants.find((p) => p.peerId === peerId);
+        const audible = peer !== undefined && peer.role === 'speaker' && !peer.muted;
+        return <RemoteAudio key={peerId} stream={stream} audible={audible} onBlocked={onAudioBlocked} />;
+      })}
 
       <div className={styles.transport} role="toolbar" aria-label="Room controls">
         <div className={`container ${styles.transportInner}`}>
