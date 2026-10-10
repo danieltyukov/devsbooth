@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/danieltyukov/devsbooth/discussions
+    about: Ask about running or extending DevsBooth, or float an idea before writing it up.
+  - name: Self-hosting guide
+    url: https://github.com/danieltyukov/devsbooth/blob/main/docs/self-hosting.md#troubleshooting
+    about: Microphone, audio, email and database problems are usually covered here.
+  - name: Security report
+    url: https://github.com/danieltyukov/devsbooth/security/advisories/new
+    about: Report a vulnerability privately instead of opening an issue.
