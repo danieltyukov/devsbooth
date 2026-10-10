@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something DevsBooth should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The situation and the problem, before any solution. Who runs into it, and how often?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: How it could work for the people using it. Mention anything the server would need to enforce.
+    validations:
+      required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this myself.
