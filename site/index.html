@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DevsBooth: self-hosted audio rooms for developers</title>
+    <meta
+      name="description"
+      content="DevsBooth is an open-source, self-hosted app for live audio rooms. Open a room, talk through what you are building, and let people drop in to listen or take the mic. MIT licensed."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#eef0f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15181d" media="(prefers-color-scheme: dark)" />
+    <link rel="canonical" href="https://danieltyukov.github.io/devsbooth/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="fonts/archivo-latin-wdth-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="style.css" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DevsBooth" />
+    <meta property="og:title" content="DevsBooth: self-hosted audio rooms for developers" />
+    <meta
+      property="og:description"
+      content="Open a room, talk through what you are building, and let people drop in to listen or take the mic. Open source, runs on your own server."
+    />
+    <meta property="og:url" content="https://danieltyukov.github.io/devsbooth/" />
+    <meta property="og:image" content="https://danieltyukov.github.io/devsbooth/img/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The DevsBooth logo with the line: audio rooms for developers." />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="masthead">
+      <div class="wrap masthead-inner">
+        <a class="brand" href="./" aria-label="DevsBooth home">
+          <svg class="mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+            <path
+              d="M6 29V13a10 10 0 0 1 20 0v16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3.2"
+              stroke-linecap="round"
+            />
+            <rect x="12.4" y="9.5" width="7.2" height="13" rx="3.6" fill="var(--onair)" />
+            <path d="M10 29h12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" />
+          </svg>
+          <span class="wordmark">DevsBooth</span>
+        </a>
+        <nav aria-label="Site">
+          <ul class="nav">
+            <li><a href="#self-host">Self-host</a></li>
+            <li><a href="https://github.com/danieltyukov/devsbooth/tree/main/docs">Docs</a></li>
+            <li><a href="https://github.com/danieltyukov/devsbooth">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="meter" aria-hidden="true"></span>
+          <h1 id="hero-title">Audio rooms for developers.</h1>
+          <p class="lede">
+            Open a room, talk through what you are building, and let people drop in to listen or take the mic.
+            DevsBooth is open source and runs on your own server.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#self-host">Self-host it</a>
+            <a class="button secondary" href="https://github.com/danieltyukov/devsbooth">View on GitHub</a>
+          </div>
+        </div>
+
+        <figure class="hero-shot faceplate">
+          <picture>
+            <source srcset="img/room-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="img/room-light.webp"
+              width="1280"
+              height="940"
+              fetchpriority="high"
+              alt="A DevsBooth room titled &ldquo;Is the TypeScript 7 compiler worth migrating to?&rdquo;. Three speakers sit on stage, each with a level meter beside their initials, and the host can move the other two to the audience. Three listeners sit below, one with a raised hand. The bottom bar has an On air button, a microphone picker, Copy link and End room."
+            />
+          </picture>
+        </figure>
+      </section>
+
+      <section id="rooms" class="section wrap" aria-labelledby="rooms-title">
+        <div class="split split-even">
+          <div class="prose">
+            <h2 id="rooms-title">How a room works</h2>
+            <p>
+              Every room has a topic and a host. Speakers sit on stage and talk. Everyone else listens from
+              the audience.
+            </p>
+
+            <dl class="roles">
+              <div>
+                <dt>Listeners</dt>
+                <dd>Join muted. To say something, raise your hand and wait for the host to bring you up.</dd>
+              </div>
+              <div>
+                <dt>Speakers</dt>
+                <dd>
+                  Pick a microphone and talk. Each speaker has a live level meter, and the On air button mutes
+                  and unmutes you.
+                </dd>
+              </div>
+              <div>
+                <dt>The host</dt>
+                <dd>
+                  Invites listeners to speak, moves speakers back to the audience and can end the room. A room
+                  that stays empty ends on its own after five minutes.
+                </dd>
+              </div>
+            </dl>
+
+            <p>
+              People sign in with an 8-digit code sent to their email, then choose a name and a unique
+              username. A photo and a bio are optional. Profiles show who someone follows and who follows
+              them.
+            </p>
+          </div>
+
+          <div class="prose">
+            <figure class="side-shot">
+              <div class="faceplate crop">
+                <picture>
+                  <source srcset="img/rooms-dark.webp" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="img/rooms-light.webp"
+                    width="1280"
+                    height="940"
+                    loading="lazy"
+                    decoding="async"
+                    alt="The rooms list. Each row shows a topic, the room type, the people on stage and how many are in the room. Live rooms have a red lamp. Above the list are a topic search field and a Start a room button."
+                  />
+                </picture>
+              </div>
+              <figcaption>The rooms list, with live participant counts and topic search.</figcaption>
+            </figure>
+
+            <h3>Who can find a room</h3>
+            <dl class="spec types">
+              <div>
+                <dt>Open</dt>
+                <dd>Listed for everyone. Anyone signed in can join.</dd>
+              </div>
+              <div>
+                <dt>Followers</dt>
+                <dd>Listed for people who follow the host, and only they can join.</dd>
+              </div>
+              <div>
+                <dt>Private</dt>
+                <dd>Not listed. Anyone signed in who has the link can join.</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section id="self-host" class="section wrap" aria-labelledby="self-host-title">
+        <div class="split split-narrow">
+          <div class="prose">
+            <h2 id="self-host-title">Self-host it</h2>
+            <p>
+              You need a server with Docker Compose. The compose file runs the DevsBooth image from
+              <code>ghcr.io/danieltyukov/devsbooth</code> next to MongoDB 8.2, and keeps data in Docker
+              volumes.
+            </p>
+            <div class="note">
+              <h3>Strict networks</h3>
+              <p>
+                Audio goes straight between browsers, with a public STUN server to help them connect. People
+                behind strict NATs or corporate firewalls may not hear each other until you add a TURN server
+                to
+                <code>ICE_SERVERS</code>.
+              </p>
+            </div>
+            <p>
+              For TURN, reverse proxies and the remaining settings, read the
+              <a href="https://github.com/danieltyukov/devsbooth/blob/main/docs/self-hosting.md"
+                >self-hosting guide</a
+              >.
+            </p>
+          </div>
+
+          <ol class="steps">
+            <li>
+              <h3>Clone the repository</h3>
+              <pre><code>git clone https://github.com/danieltyukov/devsbooth.git &amp;&amp; cd devsbooth</code></pre>
+            </li>
+            <li>
+              <h3>Configure it</h3>
+              <pre><code>cp .env.example .env</code></pre>
+              <p>Then set two values in <code>.env</code>:</p>
+              <pre><code>APP_URL=https://booth.example.com
+SMTP_URL=smtps://user:password@smtp.example.com:465</code></pre>
+              <p>
+                <code>APP_URL</code> is the address people open. It has to use https in production, because
+                browsers only allow microphone access on https and on localhost. <code>SMTP_URL</code> is the
+                mail server for sign-in codes. Without it the codes are printed in the server log, which is
+                enough for a trial run.
+              </p>
+            </li>
+            <li>
+              <h3>Start it</h3>
+              <pre><code>docker compose up -d</code></pre>
+              <p>
+                DevsBooth listens on port 3000. Put a reverse proxy with TLS in front of it, make sure the
+                proxy passes WebSocket upgrades, and set <code>TRUST_PROXY=1</code> in <code>.env</code>.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="under-the-hood" class="section wrap" aria-labelledby="hood-title">
+        <div class="split split-narrow">
+          <div class="prose">
+            <h2 id="hood-title">Under the hood</h2>
+            <p>
+              TypeScript throughout. One Node.js process serves the web client, the API and the signaling
+              socket.
+            </p>
+          </div>
+
+          <dl class="spec">
+            <div>
+              <dt>Audio</dt>
+              <dd>
+                WebRTC in a full mesh. Every pair of browsers in a room holds a direct connection, and
+                speakers send their microphone over it.
+              </dd>
+            </div>
+            <div>
+              <dt>Signaling</dt>
+              <dd>
+                Socket.IO on Express 5. The server passes connection offers between browsers and tracks who is
+                in each room, who is on stage and whose hand is up. Audio never goes through it.
+              </dd>
+            </div>
+            <div>
+              <dt>Data</dt>
+              <dd>MongoDB holds accounts, profiles, follows, rooms and sessions.</dd>
+            </div>
+            <div>
+              <dt>Sign-in</dt>
+              <dd>
+                An 8-digit code sent by email. A code expires after 10 minutes, allows three guesses and only
+                works in the browser that asked for it.
+              </dd>
+            </div>
+            <div>
+              <dt>Web client</dt>
+              <dd>React 19 and Vite.</dd>
+            </div>
+            <div>
+              <dt>Tests</dt>
+              <dd>
+                Server integration tests, web unit tests and Playwright end-to-end tests. In the end-to-end
+                suite two browsers with fake microphones join a room, and the test checks that audio actually
+                arrives.
+              </dd>
+            </div>
+            <div class="limit">
+              <dt>Limits</dt>
+              <dd>
+                A full mesh suits small rooms, since every speaker uploads a separate stream to each person in
+                the room. The default cap is 25 people per room, set by <code>ROOM_MAX_PARTICIPANTS</code>.
+                Bigger rooms would need an SFU. Presence is kept in memory, so run one server process rather
+                than several replicas.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section id="contribute" class="section wrap" aria-labelledby="contribute-title">
+        <div class="split split-narrow">
+          <div class="prose">
+            <h2 id="contribute-title">Contribute</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Fixes and features are welcome. Start with
+              <a href="https://github.com/danieltyukov/devsbooth/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a
+              >, or pick one of the
+              <a
+                href="https://github.com/danieltyukov/devsbooth/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"
+                >good first issues</a
+              >.
+            </p>
+            <p>A working local setup needs Node.js 22 and no accounts:</p>
+            <pre><code>npm install &amp;&amp; npm run dev</code></pre>
+            <p>
+              This starts a local MongoDB, the server and the web client on
+              <code>http://localhost:5173</code>. Sign-in codes show up in the terminal.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <span class="brand brand-small">
+          <svg class="mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+            <path
+              d="M6 29V13a10 10 0 0 1 20 0v16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3.2"
+              stroke-linecap="round"
+            />
+            <rect x="12.4" y="9.5" width="7.2" height="13" rx="3.6" fill="var(--onair)" />
+            <path d="M10 29h12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" />
+          </svg>
+          <span class="wordmark">DevsBooth</span>
+        </span>
+        <p>MIT licensed.</p>
+        <p><a href="https://github.com/danieltyukov/devsbooth">github.com/danieltyukov/devsbooth</a></p>
+      </div>
+    </footer>
+  </body>
+</html>
