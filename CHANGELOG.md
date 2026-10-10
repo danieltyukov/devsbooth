@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Room keyboard shortcuts: speakers can press M to mute or unmute, and listeners can press H to raise or lower a hand.
+
 ## [1.0.0] - 2026-10-10
 
 DevsBooth is back as a community project. This release is a rewrite in TypeScript; the 2022 prototype it replaces never ran end to end and shares no code with it.
