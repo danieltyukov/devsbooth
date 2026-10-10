@@ -24,6 +24,7 @@ import {
 } from '../rooms/service';
 import { toSummary } from '../users/dto';
 import { RoomLifecycle } from './lifecycle';
+import type { SfuGateway } from '../media/sfu';
 import type { PresenceStore } from './presence';
 
 /**
@@ -102,6 +103,8 @@ export interface Hub {
 export interface HubOptions {
   /** How often to sweep participants of stopped processes, when presence is shared. */
   sweepMs?: number;
+  /** Carries audio through an SFU instead of the browser mesh. */
+  sfu?: SfuGateway | null;
 }
 
 export function createHub(
@@ -110,6 +113,7 @@ export function createHub(
   presence: PresenceStore,
   options: HubOptions = {},
 ): Hub {
+  const sfu = options.sfu ?? null;
   const lifecycle = new RoomLifecycle(config.room.emptyTtlMs, (roomId) => {
     expire(roomId).catch((err: unknown) => {
       log.error('Could not end idle room, will retry', { room: roomId, err });
@@ -142,6 +146,7 @@ export function createHub(
     io.to(channel(roomId)).emit('room:ended');
     await presence.clear(roomId);
     io.in(channel(roomId)).socketsLeave(channel(roomId));
+    await sfu?.closeRoom(roomId);
     if (ended) log.info('Room ended', { room: roomId });
     return ended;
   }
@@ -269,6 +274,7 @@ export function createHub(
           for (const other of await presence.peersOfUser(roomId, summary.id)) {
             io.to(other.peerId).emit('room:kicked', { reason: 'joined-elsewhere' });
             await evict(other.peerId);
+            await sfu?.removePeer(roomId, other.peerId);
           }
           if (!socket.connected) return;
 
@@ -295,7 +301,21 @@ export function createHub(
           lifecycle.occupied(roomId);
           await socket.join(channel(roomId));
           socket.to(channel(roomId)).emit('peer:joined', self);
-          ack({ ok: true, room: toRoomSummary(room, participants.length + 1), self, participants });
+          const sfuToken = sfu
+            ? await sfu.token({
+                roomId,
+                peerId: socket.id,
+                name: summary.name,
+                canPublish: self.role === 'speaker',
+              })
+            : undefined;
+          ack({
+            ok: true,
+            room: toRoomSummary(room, participants.length + 1),
+            self,
+            participants,
+            ...(sfuToken ? { sfuToken } : {}),
+          });
         } catch (err) {
           log.error('Join failed', { room: roomId, err });
           ack(fail('internal', 'Could not join the room. Try again.'));
@@ -379,6 +399,19 @@ export function createHub(
 
           await setSpeaker(roomId, new Types.ObjectId(target.user.id), role === 'speaker');
           for (const peer of await presence.peersOfUser(roomId, target.user.id)) {
+            if (sfu) {
+              // The SFU enforces the role: change the permission before anyone hears about it, and
+              // hand the person a token for the new role in case they are not connected to it yet.
+              const canPublish = role === 'speaker';
+              await sfu.setCanPublish(roomId, peer.peerId, canPublish);
+              const token = await sfu.token({
+                roomId,
+                peerId: peer.peerId,
+                name: peer.user.name,
+                canPublish,
+              });
+              io.to(peer.peerId).emit('media:token', { token });
+            }
             await broadcast(roomId, { peerId: peer.peerId, role, handRaised: false, muted: true });
           }
           ack({ ok: true });

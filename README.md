@@ -31,7 +31,7 @@
 - **Speakers and listeners.** Listeners join muted and raise a hand. The host invites them to speak, moves people back to the audience, renames the room, and ends it. M mutes, H raises a hand.
 - **Live meters.** Each speaker's strip shows their audio level, and your own mic button lights up when you are on air. Pick any microphone the browser can see.
 - **Profiles and follows,** with a photo, a short bio and follower counts.
-- **Peer to peer audio.** Voices travel between browsers over WebRTC. The server introduces people and keeps track of who is in which room; it never handles audio.
+- **Peer to peer audio, or an SFU for big rooms.** By default voices travel directly between browsers over WebRTC, and the server never handles audio. Point it at a LiveKit server and audio goes through that instead, for rooms of hundreds.
 
 ## Self-host
 
@@ -60,6 +60,7 @@ Everything is optional except where noted. The full list with examples is in [.e
 | `TRUST_PROXY`           | Set to `1` behind a reverse proxy, so client addresses and https are detected.                                            |
 | `ROOM_MAX_PARTICIPANTS` | People per room, default 25. Every pair holds a connection, so keep it modest.                                            |
 | `API_RATE_LIMIT`        | Requests per minute per IP address, default 600. Set `TRUST_PROXY` behind a proxy so this counts visitors, not the proxy. |
+| `LIVEKIT_URL`           | Send audio through a LiveKit SFU, with `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. Unset means a browser mesh.            |
 | `REDIS_URL`             | Run several server processes that share presence through Redis. Unset means one process.                                  |
 | `ROOM_EMPTY_TTL`        | Seconds an empty room stays open before it ends, default 300. `0` keeps rooms until the host ends them.                   |
 

@@ -39,7 +39,7 @@ export function RoomPage() {
     <RoomSession
       key={`${roomId}:${attempt}`}
       roomId={roomId}
-      ice={config.data}
+      media={config.data}
       onRejoin={() => setAttempt((n) => n + 1)}
     />
   );
@@ -149,13 +149,13 @@ function ParticipantTile({
 
 interface SessionProps {
   roomId: string;
-  ice: ClientConfig;
+  media: ClientConfig;
   onRejoin: () => void;
 }
 
-function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
+function RoomSession({ roomId, media, onRejoin }: SessionProps) {
   const navigate = useNavigate();
-  const session = useRoomSession(roomId, ice);
+  const session = useRoomSession(roomId, media);
   const {
     state,
     self,

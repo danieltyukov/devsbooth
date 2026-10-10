@@ -10,6 +10,7 @@ import { loadSession } from './auth/middleware';
 import type { Config } from './config';
 import { apiNotFound, errorHandler, HttpError } from './http/errors';
 import { sameOriginGuard } from './http/guard';
+import { livekitGateway, type SfuGateway } from './media/sfu';
 import { memoryBackend, type RealtimeBackend } from './realtime/backend';
 import { createHub, type Hub, type HubOptions, type IoServer } from './realtime/hub';
 import { authRoutes } from './routes/auth';
@@ -32,11 +33,15 @@ export interface AppOptions {
   mailer?: Mailer;
   /** Where realtime state lives. Defaults to memory, for a single process. */
   backend?: RealtimeBackend;
+  /** Replaces the SFU built from the configuration, for tests. */
+  sfu?: SfuGateway | null;
   hub?: HubOptions;
 }
 
-function contentSecurityPolicy(appUrl: URL) {
+function contentSecurityPolicy(appUrl: URL, sfuUrl: string | null) {
   const socketOrigin = `${appUrl.protocol === 'https:' ? 'wss' : 'ws'}://${appUrl.host}`;
+  // The LiveKit client talks to the SFU over WebSocket, and over http(s) to check the connection.
+  const sfuOrigins = sfuUrl ? [new URL(sfuUrl).origin, new URL(sfuUrl.replace(/^ws/, 'http')).origin] : [];
   return {
     useDefaults: false,
     directives: {
@@ -47,7 +52,7 @@ function contentSecurityPolicy(appUrl: URL) {
       imgSrc: ["'self'", 'data:', 'blob:'],
       mediaSrc: ["'self'", 'blob:'],
       fontSrc: ["'self'"],
-      connectSrc: ["'self'", socketOrigin],
+      connectSrc: ["'self'", socketOrigin, ...sfuOrigins],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       formAction: ["'self'"],
@@ -58,6 +63,7 @@ function contentSecurityPolicy(appUrl: URL) {
 
 export function createApp(config: Config, options: AppOptions = {}): AppInstance {
   const app = express();
+  const sfu = options.sfu !== undefined ? options.sfu : config.sfu ? livekitGateway(config.sfu) : null;
   const server = createServer(app);
   const io: IoServer = new Server(server, {
     serveClient: false,
@@ -67,14 +73,14 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
   });
   const backend = options.backend ?? memoryBackend();
   backend.attach(io);
-  const hub = createHub(io, config, backend.presence, options.hub);
+  const hub = createHub(io, config, backend.presence, { ...options.hub, sfu });
   const mailer = options.mailer ?? createMailer(config);
 
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(
     helmet({
-      contentSecurityPolicy: contentSecurityPolicy(config.appUrl),
+      contentSecurityPolicy: contentSecurityPolicy(config.appUrl, sfu?.url ?? null),
       crossOriginEmbedderPolicy: false,
       strictTransportSecurity: config.secureCookies,
     }),
@@ -114,7 +120,7 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
   api.use('/me', meRoutes({ avatarsDir: config.avatarsDir }));
   api.use('/users', userRoutes(hub));
   api.use('/rooms', roomRoutes(hub));
-  api.use(metaRoutes(config));
+  api.use(metaRoutes(config, sfu));
   api.use(apiNotFound);
   app.use('/api', api);
 

@@ -1,9 +1,8 @@
 import type { IceServer, SignalPayload } from '@devsbooth/shared';
+import { receiverLevel, type MediaEvents, type MediaTransport } from './transport';
 
-export interface MeshEvents {
+export interface MeshEvents extends MediaEvents {
   signal(to: string, payload: SignalPayload): void;
-  track(peerId: string, stream: MediaStream): void;
-  state(peerId: string, state: RTCPeerConnectionState): void;
 }
 
 interface Peer {
@@ -22,7 +21,7 @@ interface Peer {
  * no track on its sender; when promoted, `setLocalTrack` attaches the microphone with
  * replaceTrack, which needs no renegotiation. Switching microphones works the same way.
  */
-export class Mesh {
+export class Mesh implements MediaTransport {
   private readonly peers = new Map<string, Peer>();
   private localTrack: MediaStreamTrack | null = null;
 
@@ -30,6 +29,13 @@ export class Mesh {
     private readonly ice: { iceServers: IceServer[]; iceTransportPolicy: RTCIceTransportPolicy },
     private readonly events: MeshEvents,
   ) {}
+
+  peerPresent(peerId: string): void {
+    this.call(peerId);
+  }
+
+  /** The mesh has no tokens; signaling goes through the room socket. */
+  updateToken(): void {}
 
   /** Starts a connection to a peer who was here first. The newcomer always makes the offer. */
   call(peerId: string): void {
@@ -84,12 +90,11 @@ export class Mesh {
     );
   }
 
-  /** The receiver for each peer, for reading remote audio levels. */
-  receivers(): [string, RTCRtpReceiver][] {
-    const result: [string, RTCRtpReceiver][] = [];
+  levels(): Map<string, number> {
+    const result = new Map<string, number>();
     for (const [peerId, peer] of this.peers) {
       const receiver = peer.pc.getReceivers()[0];
-      if (receiver) result.push([peerId, receiver]);
+      if (receiver) result.set(peerId, receiverLevel(receiver));
     }
     return result;
   }

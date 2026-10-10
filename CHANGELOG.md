@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Profiles list the live rooms a person hosts, following the same visibility rules as the rooms list ([#15](https://github.com/danieltyukov/devsbooth/issues/15)).
 - On phones and other browsers with a share sheet, "Share link" opens it; elsewhere the link is copied ([#17](https://github.com/danieltyukov/devsbooth/issues/17)).
 - The host can change the room topic, and everyone in the room sees it at once ([#18](https://github.com/danieltyukov/devsbooth/issues/18)).
+- Audio can go through a LiveKit SFU instead of the browser mesh, for rooms of hundreds. Speakers publish once, LiveKit enforces who may publish, and the default room cap becomes 200 ([#20](https://github.com/danieltyukov/devsbooth/issues/20)).
 - Several server processes can run side by side: with `REDIS_URL`, presence lives in Redis and the Socket.IO Redis adapter carries events between processes. Processes that stop are swept out of their rooms ([#19](https://github.com/danieltyukov/devsbooth/issues/19)).
 
 ## [1.0.0] - 2026-10-10

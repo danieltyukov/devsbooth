@@ -38,6 +38,12 @@ Object.assign(process.env, {
   ROOM_EMPTY_TTL: '0',
   LOG_LEVEL: 'warn',
 });
+// Run the suite with audio through a LiveKit SFU, e.g. a dev server: livekit-server --dev.
+if (process.env.E2E_LIVEKIT_URL) {
+  process.env.LIVEKIT_URL = process.env.E2E_LIVEKIT_URL;
+  process.env.LIVEKIT_API_KEY = process.env.E2E_LIVEKIT_API_KEY ?? 'devkey';
+  process.env.LIVEKIT_API_SECRET = process.env.E2E_LIVEKIT_API_SECRET ?? 'secret';
+}
 // Run the suite with presence shared through Redis, as several processes would use it.
 if (process.env.E2E_REDIS_URL) {
   process.env.REDIS_URL = process.env.E2E_REDIS_URL;

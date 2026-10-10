@@ -50,6 +50,9 @@ export interface IceServer {
 }
 
 export interface ClientConfig {
+  /** How audio travels: a browser mesh, or through an SFU at `sfuUrl`. */
+  media: 'mesh' | 'sfu';
+  sfuUrl: string | null;
   iceServers: IceServer[];
   /** 'relay' sends all audio through TURN, hiding participants' IP addresses from each other. */
   iceTransportPolicy: 'all' | 'relay';

@@ -11,6 +11,7 @@ import type { ClientToServerEvents, Me, ServerToClientEvents } from '@devsbooth/
 import { createApp, type AppInstance } from '../src/app';
 import type { Mailer } from '../src/auth/mailer';
 import type { RealtimeBackend } from '../src/realtime/backend';
+import type { SfuGateway } from '../src/media/sfu';
 import type { HubOptions } from '../src/realtime/hub';
 import { loadConfig, type Config } from '../src/config';
 import { connectDb, disconnectDb } from '../src/db';
@@ -43,11 +44,13 @@ export interface TestAppOptions {
   /** Builds each node's realtime backend. Defaults to memory (one process). */
   backend?: () => Promise<RealtimeBackend>;
   hub?: HubOptions;
+  /** An SFU gateway; tests use a recording fake. */
+  sfu?: SfuGateway | null;
 }
 
 async function startNode(config: Config, mailer: Mailer, options: TestAppOptions): Promise<TestNode> {
   const backend = options.backend ? await options.backend() : undefined;
-  const instance = createApp(config, { mailer, backend, hub: options.hub });
+  const instance = createApp(config, { mailer, backend, hub: options.hub, sfu: options.sfu ?? null });
   await new Promise<void>((resolve) => instance.server.listen(0, '127.0.0.1', resolve));
   const { port } = instance.server.address() as AddressInfo;
   const base = `http://127.0.0.1:${port}`;
