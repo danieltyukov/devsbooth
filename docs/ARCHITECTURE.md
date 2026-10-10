@@ -111,7 +111,8 @@ With `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`, audio goes throu
 
 - **Tokens.** The `room:join` acknowledgement carries a LiveKit token for that peer id, allowed to publish only a microphone, and only if the person is a speaker.
 - **Roles enforced by the SFU.** When the host changes a role, the server first updates the participant's publish permission through LiveKit's API (LiveKit unpublishes the tracks of someone who loses it), then sends that person a fresh token on their own socket, in case they had not connected to LiveKit yet, and only then announces the change. A modified listener client cannot publish at all.
-- **Ending and replacing.** Ending a room closes it on LiveKit; a tab replaced by a newer one is removed from LiveKit too.
+- **Leaving ends access.** Tokens live sixty seconds, long enough to connect (LiveKit refreshes them for connected clients). Leaving a room, being replaced by a newer tab or being swept removes the person from LiveKit, and ending a room closes it there.
+- **Reconciliation.** Every ten seconds the hub lists who is connected to DevsBooth rooms on LiveKit (rooms are named `devsbooth_<id>`, so other apps' rooms on a shared server are never touched). Anyone a room's presence does not list is removed, which stops a client that left but kept its connection, or reused a token; anyone allowed to publish without being a speaker loses the permission.
 - **Client.** `web/src/rtc/transport.ts` is the interface both transports implement; `sfu.ts` loads `livekit-client` only when a room uses the SFU. LiveKit does not forward the RTP audio-level extension, so SFU levels come from the receiver's own `inbound-rtp` statistics.
 
 None of this depends on how many server processes run: with `REDIS_URL`, any number share presence and relay each other's events.

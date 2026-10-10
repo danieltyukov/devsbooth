@@ -2,8 +2,8 @@ import { TokenVerifier } from 'livekit-server-sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RoomSummary } from '@devsbooth/shared';
 import { ConfigError, loadConfig } from '../src/config';
-import { livekitGateway, type SfuGateway } from '../src/media/sfu';
-import { emitWithAck, next, startTestApp, type TestApp } from './helpers';
+import { livekitGateway, type SfuGateway, type SfuParticipant } from '../src/media/sfu';
+import { emitWithAck, next, sleep, startTestApp, type TestApp } from './helpers';
 
 const KEY = 'devkey';
 const SECRET = 'a-secret-that-is-long-enough-for-hmac-signing';
@@ -18,6 +18,8 @@ function recordingSfu() {
     apiSecret: SECRET,
   });
   const calls: string[] = [];
+  /** Who the fake SFU reports as connected. */
+  const connected: SfuParticipant[] = [];
   const gateway: SfuGateway = {
     url: real.url,
     token: (input) => real.token(input),
@@ -30,13 +32,16 @@ function recordingSfu() {
     async closeRoom(roomId) {
       calls.push(`close ${roomId}`);
     },
+    async participants() {
+      return [...connected];
+    },
   };
-  return { gateway, calls };
+  return { gateway, calls, connected };
 }
 
 async function grants(token: string) {
   const claims = await verifier.verify(token);
-  return { identity: claims.sub, video: claims.video };
+  return { identity: claims.sub, video: claims.video, lifetime: (claims.exp ?? 0) - (claims.nbf ?? 0) };
 }
 
 describe('SFU configuration', () => {
@@ -70,7 +75,7 @@ describe('with an SFU', () => {
 
   beforeAll(async () => {
     sfu = recordingSfu();
-    t = await startTestApp({}, { sfu: sfu.gateway });
+    t = await startTestApp({}, { sfu: sfu.gateway, hub: { sfuCheckMs: 100 } });
     host = await t.createUser('sfu_host');
     guest = await t.createUser('sfu_guest');
   });
@@ -103,13 +108,22 @@ describe('with an SFU', () => {
     const jb = await emitWithAck(b, 'room:join', { roomId: room.id });
     if (!ja.ok || !jb.ok) throw new Error('join failed');
 
-    expect(await grants(ja.sfuToken!)).toMatchObject({
+    const hostGrants = await grants(ja.sfuToken!);
+    expect(hostGrants).toMatchObject({
       identity: ja.self.peerId,
-      video: { room: room.id, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: false },
+      video: {
+        room: `devsbooth_${room.id}`,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: false,
+      },
     });
+    // Only long enough to connect; LiveKit refreshes tokens for connected clients.
+    expect(hostGrants.lifetime).toBeLessThanOrEqual(60);
     expect(await grants(jb.sfuToken!)).toMatchObject({
       identity: jb.self.peerId,
-      video: { room: room.id, canPublish: false, canSubscribe: true },
+      video: { room: `devsbooth_${room.id}`, canPublish: false, canSubscribe: true },
     });
   });
 
@@ -146,5 +160,36 @@ describe('with an SFU', () => {
 
     await t.http.delete(`/api/rooms/${room.id}`).set('Cookie', host.cookie).expect(204);
     expect(sfu.calls).toContain(`close ${room.id}`);
+  });
+
+  it('removes people from the SFU when they leave the room', async () => {
+    const room = await createRoom();
+    const b = await t.socket(guest.cookie);
+    const jb = await emitWithAck(b, 'room:join', { roomId: room.id });
+    if (!jb.ok) throw new Error('join failed');
+    sfu.calls.length = 0;
+    b.emit('room:leave');
+    await sleep(100);
+    expect(sfu.calls).toContain(`remove ${jb.self.peerId}`);
+  });
+
+  it('removes SFU participants the room does not list, and revokes publishing from listeners', async () => {
+    const room = await createRoom();
+    const b = await t.socket(guest.cookie);
+    const jb = await emitWithAck(b, 'room:join', { roomId: room.id });
+    if (!jb.ok) throw new Error('join failed');
+
+    sfu.calls.length = 0;
+    sfu.connected.push(
+      // Left the room but kept, or reused, its SFU connection.
+      { roomId: room.id, peerId: 'invisible-listener', canPublish: false },
+      // In the room as a listener, but somehow allowed to publish.
+      { roomId: room.id, peerId: jb.self.peerId, canPublish: true },
+    );
+    await sleep(350);
+    sfu.connected.length = 0;
+    expect(sfu.calls).toContain('remove invisible-listener');
+    expect(sfu.calls).toContain(`publish ${jb.self.peerId} false`);
+    expect(sfu.calls).not.toContain(`remove ${jb.self.peerId}`);
   });
 });

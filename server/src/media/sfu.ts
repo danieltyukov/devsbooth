@@ -17,6 +17,14 @@ export interface SfuGateway {
   removePeer(roomId: string, peerId: string): Promise<void>;
   /** Disconnects everyone and closes the room on the SFU. */
   closeRoom(roomId: string): Promise<void>;
+  /** Everyone connected to DevsBooth rooms on the SFU right now, for reconciliation. */
+  participants(): Promise<SfuParticipant[]>;
+}
+
+export interface SfuParticipant {
+  roomId: string;
+  peerId: string;
+  canPublish: boolean;
 }
 
 export interface LivekitConfig {
@@ -26,7 +34,14 @@ export interface LivekitConfig {
   apiSecret: string;
 }
 
-const TOKEN_TTL = '6h';
+/**
+ * Tokens only need to be valid long enough to connect: LiveKit refreshes them for connected
+ * clients. A short life means a token from a room you left, or a role you lost, is soon useless.
+ */
+const TOKEN_TTL = '60s';
+/** SFU room names, so a LiveKit server shared with other apps is never touched outside them. */
+const ROOM_PREFIX = 'devsbooth_';
+const sfuRoom = (roomId: string) => ROOM_PREFIX + roomId;
 
 function isNotFound(err: unknown): boolean {
   const status = (err as { status?: number; code?: string }).status;
@@ -54,7 +69,7 @@ export function livekitGateway(config: LivekitConfig): SfuGateway {
         ttl: TOKEN_TTL,
       });
       token.addGrant({
-        room: roomId,
+        room: sfuRoom(roomId),
         roomJoin: true,
         canSubscribe: true,
         canPublish,
@@ -67,7 +82,7 @@ export function livekitGateway(config: LivekitConfig): SfuGateway {
 
     async setCanPublish(roomId, peerId, canPublish) {
       try {
-        await service.updateParticipant(roomId, peerId, undefined, permission(canPublish));
+        await service.updateParticipant(sfuRoom(roomId), peerId, undefined, permission(canPublish));
       } catch (err) {
         // Not connected to the SFU yet: the fresh token sent with the role change covers it.
         if (!isNotFound(err)) throw err;
@@ -76,7 +91,7 @@ export function livekitGateway(config: LivekitConfig): SfuGateway {
 
     async removePeer(roomId, peerId) {
       try {
-        await service.removeParticipant(roomId, peerId);
+        await service.removeParticipant(sfuRoom(roomId), peerId);
       } catch (err) {
         if (!isNotFound(err)) log.warn('Could not remove a participant from the SFU', { err });
       }
@@ -84,10 +99,26 @@ export function livekitGateway(config: LivekitConfig): SfuGateway {
 
     async closeRoom(roomId) {
       try {
-        await service.deleteRoom(roomId);
+        await service.deleteRoom(sfuRoom(roomId));
       } catch (err) {
         if (!isNotFound(err)) log.warn('Could not close the room on the SFU', { err });
       }
+    },
+
+    async participants() {
+      const result: SfuParticipant[] = [];
+      for (const room of await service.listRooms()) {
+        if (!room.name.startsWith(ROOM_PREFIX)) continue;
+        const roomId = room.name.slice(ROOM_PREFIX.length);
+        for (const participant of await service.listParticipants(room.name)) {
+          result.push({
+            roomId,
+            peerId: participant.identity,
+            canPublish: participant.permission?.canPublish ?? false,
+          });
+        }
+      }
+      return result;
     },
   };
 }

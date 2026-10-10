@@ -105,6 +105,8 @@ export interface HubOptions {
   sweepMs?: number;
   /** Carries audio through an SFU instead of the browser mesh. */
   sfu?: SfuGateway | null;
+  /** How often to compare who is on the SFU with who is in each room. */
+  sfuCheckMs?: number;
 }
 
 export function createHub(
@@ -159,6 +161,28 @@ export function createHub(
     io.in(peerId).socketsLeave(channel(left.roomId));
     io.to(channel(left.roomId)).except(peerId).emit('peer:left', { peerId });
     if (left.empty) lifecycle.vacant(left.roomId);
+    // Leaving the room also ends access to its audio.
+    if (sfu) void sfu.removePeer(left.roomId, peerId);
+  }
+
+  /**
+   * The SFU only knows what tokens allowed. This makes it match the rooms: anyone on the SFU who is
+   * not in that room's presence is removed (a client that left but kept its connection, or reused
+   * a token), and anyone who may publish without being a speaker loses the permission.
+   */
+  async function reconcileSfu(gateway: SfuGateway): Promise<void> {
+    for (const participant of await gateway.participants()) {
+      const [present, roomId] = await Promise.all([
+        presence.get(participant.peerId),
+        presence.roomOf(participant.peerId),
+      ]);
+      if (!present || roomId !== participant.roomId) {
+        log.info('Removing a participant the room does not list from the SFU', { room: participant.roomId });
+        await gateway.removePeer(participant.roomId, participant.peerId);
+      } else if (participant.canPublish && present.role !== 'speaker') {
+        await gateway.setCanPublish(participant.roomId, participant.peerId, false);
+      }
+    }
   }
 
   async function broadcast(roomId: string, patch: ParticipantPatch): Promise<void> {
@@ -187,6 +211,14 @@ export function createHub(
       timer.unref();
       timers.push(timer);
     }
+  }
+
+  if (sfu) {
+    const check = setInterval(() => {
+      reconcileSfu(sfu).catch((err: unknown) => log.warn('SFU check failed', { err }));
+    }, options.sfuCheckMs ?? 10_000);
+    check.unref();
+    timers.push(check);
   }
 
   async function scheduleIdleRooms(): Promise<void> {
