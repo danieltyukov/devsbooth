@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+data
+.data
+package-lock.json
+playwright-report
+test-results
+docs/superpowers
