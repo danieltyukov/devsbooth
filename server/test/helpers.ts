@@ -41,6 +41,7 @@ export async function startTestApp(env: Record<string, string> = {}): Promise<Te
     APP_URL: 'http://localhost:3999',
     DATA_DIR: dataDir,
     AUTH_RATE_LIMIT: '0',
+    API_RATE_LIMIT: '0',
     ROOM_EMPTY_TTL: '0',
     LOG_LEVEL: 'silent',
     ...env,

@@ -34,6 +34,7 @@ Object.assign(process.env, {
   // Browsers on one machine reach each other over host candidates; no STUN needed.
   ICE_SERVERS: '[]',
   AUTH_RATE_LIMIT: '0',
+  API_RATE_LIMIT: '0',
   ROOM_EMPTY_TTL: '0',
   LOG_LEVEL: 'warn',
 });

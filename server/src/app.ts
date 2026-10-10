@@ -72,20 +72,25 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
     }),
   );
 
-  const limiter =
-    config.authRateLimit > 0
-      ? rateLimit({
-          windowMs: 15 * 60 * 1000,
-          limit: config.authRateLimit,
-          standardHeaders: 'draft-8',
-          legacyHeaders: false,
-          handler: (_req, _res, next) => {
-            next(new HttpError(429, 'too_many_requests', 'Too many sign-in attempts. Wait a few minutes.'));
-          },
-        })
-      : (_req: express.Request, _res: express.Response, next: express.NextFunction) => next();
+  /** A per-IP limiter. A limit of 0 turns it off (tests, or a trusted private network). */
+  const perIp = (windowMs: number, limit: number, message: string) =>
+    rateLimit({
+      windowMs,
+      limit: Math.max(limit, 1),
+      skip: () => limit === 0,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      handler: (_req, _res, next) => next(new HttpError(429, 'too_many_requests', message)),
+    });
+  const limiter = perIp(
+    15 * 60 * 1000,
+    config.authRateLimit,
+    'Too many sign-in attempts. Wait a few minutes.',
+  );
+  const apiLimiter = perIp(60 * 1000, config.apiRateLimit, 'Too many requests. Wait a minute and try again.');
 
   const api = express.Router();
+  api.use(apiLimiter);
   api.use(express.json({ limit: '100kb' }));
   api.use(sameOriginGuard(config.appUrl.origin));
   api.use(loadSession(config.secureCookies));
@@ -107,6 +112,7 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
 
   app.use(
     AVATAR_ROUTE,
+    apiLimiter,
     express.static(config.avatarsDir, { immutable: true, maxAge: '30d', fallthrough: false }),
   );
 
@@ -123,7 +129,7 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
         },
       }),
     );
-    app.get('/{*path}', (_req, res) => {
+    app.get('/{*path}', apiLimiter, (_req, res) => {
       res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(webDist, 'index.html'));
     });

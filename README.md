@@ -50,16 +50,17 @@ DevsBooth is now on port 3000, with MongoDB beside it. The image is published as
 
 Everything is optional except where noted. The full list with examples is in [.env.example](.env.example).
 
-| Variable                | Purpose                                                                                                            |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `APP_URL`               | The address people open, such as `https://booth.example.org`. Required outside localhost.                          |
-| `MONGODB_URI`           | MongoDB connection string. Set by `compose.yaml`; required when running the server yourself.                       |
-| `SMTP_URL`              | SMTP server for sign-in emails, such as `smtps://user:pass@smtp.example.org:465`. Without it, codes go to the log. |
-| `MAIL_FROM`             | Sender address for sign-in emails.                                                                                 |
-| `ICE_SERVERS`           | STUN and TURN servers as JSON. Defaults to a public STUN server.                                                   |
-| `TRUST_PROXY`           | Set to `1` behind a reverse proxy, so client addresses and https are detected.                                     |
-| `ROOM_MAX_PARTICIPANTS` | People per room, default 25. Every pair holds a connection, so keep it modest.                                     |
-| `ROOM_EMPTY_TTL`        | Seconds an empty room stays open before it ends, default 300. `0` keeps rooms until the host ends them.            |
+| Variable                | Purpose                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `APP_URL`               | The address people open, such as `https://booth.example.org`. Required outside localhost.                                 |
+| `MONGODB_URI`           | MongoDB connection string. Set by `compose.yaml`; required when running the server yourself.                              |
+| `SMTP_URL`              | SMTP server for sign-in emails, such as `smtps://user:pass@smtp.example.org:465`. Without it, codes go to the log.        |
+| `MAIL_FROM`             | Sender address for sign-in emails.                                                                                        |
+| `ICE_SERVERS`           | STUN and TURN servers as JSON. Defaults to a public STUN server.                                                          |
+| `TRUST_PROXY`           | Set to `1` behind a reverse proxy, so client addresses and https are detected.                                            |
+| `ROOM_MAX_PARTICIPANTS` | People per room, default 25. Every pair holds a connection, so keep it modest.                                            |
+| `API_RATE_LIMIT`        | Requests per minute per IP address, default 600. Set `TRUST_PROXY` behind a proxy so this counts visitors, not the proxy. |
+| `ROOM_EMPTY_TTL`        | Seconds an empty room stays open before it ends, default 300. `0` keeps rooms until the host ends them.                   |
 
 ## Develop
 

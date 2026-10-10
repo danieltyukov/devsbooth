@@ -28,6 +28,7 @@ const envSchema = z.object({
   ROOM_MAX_PARTICIPANTS: z.coerce.number().int().min(2).max(100).default(25),
   ROOM_EMPTY_TTL: z.coerce.number().int().min(0).default(300),
   AUTH_RATE_LIMIT: z.coerce.number().int().min(0).default(30),
+  API_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
   TRUST_PROXY: z.string().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
 });
@@ -61,6 +62,8 @@ export interface Config {
   };
   /** Sign-in requests allowed per IP per 15 minutes. 0 disables the limit. */
   authRateLimit: number;
+  /** API, avatar and page requests allowed per IP per minute. 0 disables the limit. */
+  apiRateLimit: number;
   trustProxy: boolean | number | string;
   logLevel: LogLevel;
 }
@@ -140,6 +143,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       emptyTtlMs: e.ROOM_EMPTY_TTL * 1000,
     },
     authRateLimit: e.AUTH_RATE_LIMIT,
+    apiRateLimit: e.API_RATE_LIMIT,
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
     logLevel: e.LOG_LEVEL,
   };

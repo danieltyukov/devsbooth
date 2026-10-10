@@ -139,4 +139,5 @@ The server serves the built client from `web/dist` and stores avatars in `server
 - **People join but cannot hear each other.** The participant shows "No audio link". Add a TURN server.
 - **Sign-in codes never arrive.** Check `docker compose logs app` for SMTP errors, and your provider's sending limits.
 - **"Cross-origin requests are not allowed".** `APP_URL` does not match the address in the browser.
+- **"Too many requests" for everyone at once.** Behind a reverse proxy without `TRUST_PROXY=1`, every visitor appears to come from the proxy's address and shares one rate limit (`API_RATE_LIMIT`, 600 requests per minute per address by default).
 - **MongoDB keeps restarting with "Linux kernel versions 6.19 and newer has a known incompatibility".** The 8.0 line of MongoDB (the plain `mongo:8` tag) refuses to start on recent kernels. `compose.yaml` uses `mongo:8.2`, which does not have that problem.
