@@ -98,7 +98,39 @@ With a TURN server in place, `ICE_TRANSPORT_POLICY=relay` routes all audio throu
 
 ## Limits
 
-A room holds `ROOM_MAX_PARTICIPANTS` people (default 25). Every pair holds a connection, so very large rooms strain browsers before they strain the server.
+A room holds `ROOM_MAX_PARTICIPANTS` people (default 25). In a browser mesh every pair holds a connection, so very large rooms strain browsers before they strain the server. An SFU lifts that limit.
+
+## Bigger rooms with an SFU
+
+A browser mesh suits rooms of a couple of dozen people. For larger rooms, run a [LiveKit](https://github.com/livekit/livekit) server (open source, Apache 2.0, no account needed) and DevsBooth sends audio through it: each speaker uploads once and LiveKit forwards it. Roles are then enforced by LiveKit itself, and people in a room no longer see each other's IP addresses.
+
+A minimal LiveKit, with its own key and secret:
+
+```yaml
+# livekit.yaml
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+keys:
+  devsbooth: a-long-random-secret-of-at-least-32-characters
+```
+
+```sh
+docker run -d --name livekit --network host -v "$PWD/livekit.yaml:/livekit.yaml" \
+  livekit/livekit-server:v1.13.9 --config /livekit.yaml
+```
+
+Serve port 7880 over TLS through your reverse proxy (it carries a WebSocket, like DevsBooth), open TCP 7881 and UDP 7882, then point DevsBooth at it:
+
+```sh
+LIVEKIT_URL=wss://livekit.example.org
+LIVEKIT_API_KEY=devsbooth
+LIVEKIT_API_SECRET=a-long-random-secret-of-at-least-32-characters
+```
+
+If DevsBooth reaches LiveKit at another address than browsers do (for example inside a Docker network), set `LIVEKIT_API_URL=http://livekit:7880` as well. With an SFU, `ROOM_MAX_PARTICIPANTS` defaults to 200. LiveKit's own [deployment guide](https://docs.livekit.io/home/self-hosting/deployment/) covers TLS, TURN and scaling it further.
 
 ## Several processes
 

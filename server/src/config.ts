@@ -25,12 +25,16 @@ const envSchema = z.object({
   MAIL_OUTBOX_DIR: z.string().min(1).optional(),
   ICE_SERVERS: z.string().optional(),
   ICE_TRANSPORT_POLICY: z.enum(['all', 'relay']).default('all'),
-  ROOM_MAX_PARTICIPANTS: z.coerce.number().int().min(2).max(100).default(25),
+  ROOM_MAX_PARTICIPANTS: z.coerce.number().int().min(2).max(1000).optional(),
   ROOM_EMPTY_TTL: z.coerce.number().int().min(0).default(300),
   AUTH_RATE_LIMIT: z.coerce.number().int().min(0).default(30),
   API_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
   TRUST_PROXY: z.string().optional(),
   REDIS_URL: z.string().min(1).optional(),
+  LIVEKIT_URL: z.url().optional(),
+  LIVEKIT_API_URL: z.url().optional(),
+  LIVEKIT_API_KEY: z.string().min(1).optional(),
+  LIVEKIT_API_SECRET: z.string().min(1).optional(),
   REDIS_PREFIX: z.string().min(1).default('devsbooth:'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
 });
@@ -67,6 +71,8 @@ export interface Config {
   /** API, avatar and page requests allowed per IP per minute. 0 disables the limit. */
   apiRateLimit: number;
   trustProxy: boolean | number | string;
+  /** An SFU (LiveKit) to carry audio. Unset means a browser mesh. */
+  sfu: { url: string; apiUrl: string; apiKey: string; apiSecret: string } | null;
   /** Shared state for running several processes. Unset means one process, state in memory. */
   redis: { url: string | undefined; prefix: string };
   logLevel: LogLevel;
@@ -107,6 +113,28 @@ function parseIceServers(value: string | undefined): IceServer[] {
   return result.data;
 }
 
+function parseSfu(e: z.infer<typeof envSchema>): Config['sfu'] {
+  const values = [e.LIVEKIT_URL, e.LIVEKIT_API_KEY, e.LIVEKIT_API_SECRET];
+  if (values.every((value) => value === undefined)) return null;
+  if (values.some((value) => value === undefined)) {
+    throw new ConfigError('An SFU needs LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET together.');
+  }
+  const url = new URL(e.LIVEKIT_URL!);
+  if (url.protocol !== 'wss:' && url.protocol !== 'ws:') {
+    throw new ConfigError(
+      'LIVEKIT_URL is the address browsers use, starting with wss:// (or ws:// locally).',
+    );
+  }
+  // The server API lives at the same host over http(s) unless told otherwise.
+  const apiUrl = e.LIVEKIT_API_URL ?? url.href.replace(/^ws/, 'http');
+  return {
+    url: url.href.replace(/\/$/, ''),
+    apiUrl,
+    apiKey: e.LIVEKIT_API_KEY!,
+    apiSecret: e.LIVEKIT_API_SECRET!,
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const result = envSchema.safeParse(env);
   if (!result.success) {
@@ -116,6 +144,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const e = result.data;
 
   const appUrl = new URL(e.APP_URL ?? `http://localhost:${e.PORT}`);
+  const sfu = parseSfu(e);
   const dataDir = path.resolve(e.DATA_DIR);
   const transport = e.MAIL_TRANSPORT ?? (e.SMTP_URL ? 'smtp' : 'log');
   if (transport === 'smtp' && !e.SMTP_URL) {
@@ -142,8 +171,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     iceServers: parseIceServers(e.ICE_SERVERS),
     iceTransportPolicy: e.ICE_TRANSPORT_POLICY,
+    sfu,
     room: {
-      maxParticipants: e.ROOM_MAX_PARTICIPANTS,
+      // A mesh holds a connection per pair of people, an SFU one per person.
+      maxParticipants: e.ROOM_MAX_PARTICIPANTS ?? (sfu ? 200 : 25),
       emptyTtlMs: e.ROOM_EMPTY_TTL * 1000,
     },
     authRateLimit: e.AUTH_RATE_LIMIT,

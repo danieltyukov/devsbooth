@@ -33,6 +33,8 @@ export interface JoinResult {
   self: Participant;
   /** Everyone already in the room, excluding `self`. The joiner sends them offers. */
   participants: Participant[];
+  /** With an SFU: the token to connect to it, carrying this person's publish permission. */
+  sfuToken?: string;
 }
 
 export type ParticipantPatch = { peerId: string } & Partial<
@@ -48,6 +50,8 @@ export interface ServerToClientEvents {
   /** The host changed the room's details. */
   'room:updated': (patch: { topic: string }) => void;
   'room:kicked': (event: { reason: 'joined-elsewhere' }) => void;
+  /** With an SFU: a fresh token after your role changed. Sent only to you. */
+  'media:token': (event: { token: string }) => void;
 }
 
 export interface ClientToServerEvents {

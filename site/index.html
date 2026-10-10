@@ -238,8 +238,9 @@ SMTP_URL=smtps://user:password@smtp.example.com:465</code></pre>
             <div>
               <dt>Audio</dt>
               <dd>
-                WebRTC in a full mesh. Every pair of browsers in a room holds a direct connection, and
-                speakers send their microphone over it.
+                WebRTC in a full mesh by default: every pair of browsers in a room holds a direct connection,
+                and speakers send their microphone over it. With a LiveKit SFU, speakers upload once and the
+                SFU forwards their audio and enforces who may speak.
               </dd>
             </div>
             <div>
@@ -277,7 +278,8 @@ SMTP_URL=smtps://user:password@smtp.example.com:465</code></pre>
               <dd>
                 A full mesh suits small rooms, since every speaker uploads a separate stream to each person in
                 the room. The default cap is 25 people per room, set by <code>ROOM_MAX_PARTICIPANTS</code>.
-                Bigger rooms would need an SFU. One server process is the default; with
+                For bigger rooms, set <code>LIVEKIT_URL</code> and audio goes through a LiveKit SFU, which
+                carries hundreds per room. One server process is the default; with
                 <code>REDIS_URL</code> several share presence through Redis.
               </dd>
             </div>

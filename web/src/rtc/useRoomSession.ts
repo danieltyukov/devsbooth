@@ -9,6 +9,8 @@ import type {
 } from '@devsbooth/shared';
 import { LevelStore, LocalMeter } from './levels';
 import { Mesh } from './mesh';
+import { connectSfu } from './sfu';
+import type { MediaEvents, MediaTransport } from './transport';
 import { initialRoomState, roomReducer, selectSelf } from './room-state';
 
 type RoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -16,22 +18,6 @@ type RoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export type MicStatus = 'off' | 'requesting' | 'on' | 'denied' | 'unavailable';
 
 const LEVEL_INTERVAL_MS = 100;
-/** A source that has not delivered audio for this long is silent (Opus stops sending when muted). */
-const STALE_SOURCE_MS = 400;
-
-/** Loudest recent level among a receiver's sources. */
-function receiverLevel(receiver: RTCRtpReceiver): number {
-  // The spec puts source timestamps on the performance.timeOrigin clock; accept either base.
-  const absolute = performance.timeOrigin + performance.now();
-  const relative = performance.now();
-  let level = 0;
-  for (const source of receiver.getSynchronizationSources()) {
-    const age = Math.min(Math.abs(absolute - source.timestamp), Math.abs(relative - source.timestamp));
-    if (age <= STALE_SOURCE_MS) level = Math.max(level, source.audioLevel ?? 0);
-  }
-  return level;
-}
-
 const CONNECT_ERRORS: Record<string, string> = {
   unauthorized: 'Your session has ended. Sign in again to join.',
   forbidden: 'Finish setting up your profile before joining a room.',
@@ -52,17 +38,14 @@ async function openMicrophone(deviceId: string | undefined): Promise<MediaStream
  * Joins a room and runs everything that keeps you in it: the signaling socket, the peer
  * connections, your microphone, and the audio levels behind the meters.
  */
-export function useRoomSession(
-  roomId: string,
-  ice: Pick<ClientConfig, 'iceServers' | 'iceTransportPolicy'> | undefined,
-) {
+export function useRoomSession(roomId: string, media: ClientConfig | undefined) {
   const [state, dispatch] = useReducer(roomReducer, initialRoomState);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [mic, setMic] = useState<{ status: MicStatus; deviceId?: string; error?: string }>({ status: 'off' });
   const [levels] = useState(() => new LevelStore());
 
   const socketRef = useRef<RoomSocket | null>(null);
-  const meshRef = useRef<Mesh | null>(null);
+  const transportRef = useRef<MediaTransport | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const meterRef = useRef<LocalMeter | null>(null);
   const mutedRef = useRef(true);
@@ -78,7 +61,7 @@ export function useRoomSession(
     meterRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    void meshRef.current?.setLocalTrack(null);
+    void transportRef.current?.setLocalTrack(null);
   }, []);
 
   const acquireMicrophone = useCallback(async (deviceId: string | undefined) => {
@@ -100,7 +83,7 @@ export function useRoomSession(
       streamRef.current = stream;
       meterRef.current = new LocalMeter(stream);
       deviceRef.current = deviceId ?? track.getSettings().deviceId;
-      await meshRef.current?.setLocalTrack(track);
+      await transportRef.current?.setLocalTrack(track);
       setMic({ status: 'on', deviceId: deviceRef.current });
     } catch (err) {
       if (request !== micRequestRef.current) return;
@@ -132,43 +115,53 @@ export function useRoomSession(
     [acquireMicrophone, releaseMicrophone],
   );
 
-  // The socket and the mesh live as long as you are in this room.
+  // The socket and the audio transport live as long as you are in this room.
   useEffect(() => {
-    if (!ice) return;
+    if (!media) return;
     const socket: RoomSocket = io({ transports: ['websocket'], autoConnect: false });
-    const mesh = new Mesh(
-      { iceServers: ice.iceServers, iceTransportPolicy: ice.iceTransportPolicy },
-      {
-        signal: (to, payload) => socket.emit('rtc:signal', { to, ...payload }),
-        track: (peerId, stream) => setRemoteStreams((current) => ({ ...current, [peerId]: stream })),
-        state: (peerId, connection) => dispatch({ type: 'connection', peerId, state: connection }),
-      },
-    );
     socketRef.current = socket;
-    meshRef.current = mesh;
     let active = true;
+    /** Bumped on every join, so a slow SFU connection from an earlier join is thrown away. */
+    let joinCount = 0;
+
+    const events: MediaEvents = {
+      track: (peerId, stream) => setRemoteStreams((current) => ({ ...current, [peerId]: stream })),
+      state: (peerId, connection) => dispatch({ type: 'connection', peerId, state: connection }),
+    };
+
+    const closeTransport = () => {
+      transportRef.current?.close();
+      transportRef.current = null;
+      setRemoteStreams({});
+    };
+
+    /** Starts sending the microphone, if there is one, once a transport exists. */
+    const attach = (transport: MediaTransport) => {
+      transportRef.current = transport;
+      const track = streamRef.current?.getAudioTracks()[0];
+      if (track) void transport.setLocalTrack(track);
+    };
 
     const forget = (peerId: string) => {
-      mesh.hangUp(peerId);
+      transportRef.current?.hangUp(peerId);
       levels.delete(peerId);
       setRemoteStreams(({ [peerId]: _gone, ...rest }) => rest);
     };
 
     const stop = () => {
       active = false;
-      mesh.close();
-      setRemoteStreams({});
+      closeTransport();
       releaseMicrophone();
       socket.disconnect();
     };
 
     // Runs on the first connection and again after a reconnect, which brings a new peer id.
     socket.on('connect', () => {
-      mesh.close();
-      setRemoteStreams({});
+      const join = ++joinCount;
+      closeTransport();
       dispatch({ type: 'connecting' });
-      socket.emit('room:join', { roomId }, (result) => {
-        if (!active) return;
+      socket.emit('room:join', { roomId }, async (result) => {
+        if (!active || join !== joinCount) return;
         if (!result.ok) {
           dispatch({ type: 'failed', error: result.error });
           stop();
@@ -178,7 +171,30 @@ export function useRoomSession(
         if (streamRef.current) streamRef.current.getAudioTracks().forEach((track) => (track.enabled = false));
         dispatch({ type: 'joined', room: result.room, self: result.self, participants: result.participants });
         applyRole(result.self.role);
-        for (const participant of result.participants) mesh.call(participant.peerId);
+
+        if (media.media === 'sfu' && media.sfuUrl && result.sfuToken) {
+          try {
+            const transport = await connectSfu(media.sfuUrl, result.sfuToken, events);
+            if (!active || join !== joinCount) return transport.close();
+            attach(transport);
+          } catch {
+            dispatch({
+              type: 'failed',
+              error: {
+                code: 'connection',
+                message: 'Could not reach the audio server. Try again in a moment.',
+              },
+            });
+            stop();
+          }
+          return;
+        }
+        const mesh = new Mesh(
+          { iceServers: media.iceServers, iceTransportPolicy: media.iceTransportPolicy },
+          { ...events, signal: (to, payload) => socket.emit('rtc:signal', { to, ...payload }) },
+        );
+        attach(mesh);
+        for (const participant of result.participants) mesh.peerPresent(participant.peerId);
       });
     });
     socket.on('connect_error', (err) => {
@@ -203,7 +219,8 @@ export function useRoomSession(
       }
       if (patch.role) applyRole(patch.role);
     });
-    socket.on('rtc:signal', ({ from, ...payload }) => mesh.handleSignal(from, payload));
+    socket.on('rtc:signal', ({ from, ...payload }) => transportRef.current?.handleSignal(from, payload));
+    socket.on('media:token', ({ token }) => transportRef.current?.updateToken(token));
     socket.on('room:updated', (patch) => dispatch({ type: 'room-updated', patch }));
     socket.on('room:ended', () => {
       dispatch({ type: 'ended' });
@@ -219,9 +236,8 @@ export function useRoomSession(
       if (socket.connected) socket.emit('room:leave');
       stop();
       socketRef.current = null;
-      meshRef.current = null;
     };
-  }, [roomId, ice, levels, applyRole, releaseMicrophone]);
+  }, [roomId, media, levels, applyRole, releaseMicrophone]);
 
   useEffect(() => {
     silentRef.current = new Set(
@@ -232,11 +248,11 @@ export function useRoomSession(
   // Audio levels for the meters and the speaking indicators.
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const mesh = meshRef.current;
+      const transport = transportRef.current;
       const selfId = socketRef.current?.id;
-      if (!mesh) return;
-      for (const [peerId, receiver] of mesh.receivers()) {
-        levels.set(peerId, silentRef.current.has(peerId) ? 0 : receiverLevel(receiver));
+      if (!transport) return;
+      for (const [peerId, level] of transport.levels()) {
+        levels.set(peerId, silentRef.current.has(peerId) ? 0 : level);
       }
       if (selfId) levels.set(selfId, meterRef.current && !mutedRef.current ? meterRef.current.read() : 0);
     }, LEVEL_INTERVAL_MS);

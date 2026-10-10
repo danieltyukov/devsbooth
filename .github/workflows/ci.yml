@@ -66,20 +66,22 @@ jobs:
       - run: npm run format:check
 
   e2e:
-    name: end-to-end (${{ matrix.presence }})
+    name: end-to-end (${{ matrix.mode }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        presence: [memory, redis]
+        # memory: one process, browser mesh. redis: shared presence. sfu: audio through LiveKit.
+        mode: [memory, redis, sfu]
     services:
       redis:
         image: redis:8
         ports: ['6379:6379']
         options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
     env:
-      E2E_REDIS_URL: ${{ matrix.presence == 'redis' && 'redis://localhost:6379' || '' }}
+      E2E_REDIS_URL: ${{ matrix.mode == 'redis' && 'redis://localhost:6379' || '' }}
+      E2E_LIVEKIT_URL: ${{ matrix.mode == 'sfu' && 'ws://127.0.0.1:7880' || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -94,12 +96,18 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Start a LiveKit dev server
+        if: matrix.mode == 'sfu'
+        run: |
+          docker run -d --name livekit --network host livekit/livekit-server:v1.13.9 \
+            --dev --bind 127.0.0.1 --node-ip 127.0.0.1
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:7880 >/dev/null && break; sleep 1; done
       - run: npm run build
       - run: npm run test -w e2e
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-${{ matrix.presence }}
+          name: playwright-report-${{ matrix.mode }}
           path: |
             e2e/playwright-report
             e2e/test-results

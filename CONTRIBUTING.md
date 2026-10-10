@@ -50,7 +50,7 @@ npm run test:e2e   # build, then Playwright
 - **Web tests** (`web/src/**/*.test.ts(x)`) run in jsdom: reducers, the API client, forms.
 - **End-to-end tests** (`e2e/tests`) run the production build with sign-in codes written to `e2e/.cache/outbox`, and Chromium with fake microphones that play a tone. Participant tiles expose `data-role`, `data-muted`, `data-hand`, `data-connection` and `data-speaking`; `data-speaking` comes from the level of the received WebRTC audio, so a test that waits for it proves audio crossed between browsers. `npx playwright test --ui` (inside `e2e/`) is the easiest way to debug one.
 
-The shared-presence and multi-process tests need Redis and are skipped without it. Run one with `docker run --rm -p 6379:6379 redis:8` and set `TEST_REDIS_URL=redis://localhost:6379`; for the end-to-end suite, `E2E_REDIS_URL` does the same. CI runs both ways.
+The shared-presence and multi-process tests need Redis and are skipped without it. Run one with `docker run --rm -p 6379:6379 redis:8` and set `TEST_REDIS_URL=redis://localhost:6379`; for the end-to-end suite, `E2E_REDIS_URL` does the same. To run the end-to-end suite through an SFU, start a LiveKit dev server (`docker run --rm --network host livekit/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1`) and set `E2E_LIVEKIT_URL=ws://127.0.0.1:7880`. CI runs all three ways.
 
 The first run downloads a MongoDB binary (about 120 MB) for the test database, and `npx playwright install chromium` fetches the browser if you do not have it.
 
