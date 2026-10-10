@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build the web client and the server bundle.
-FROM node:24-slim AS build
+FROM node:25-slim AS build
 WORKDIR /app
 ENV MONGOMS_DISABLE_POSTINSTALL=1
 COPY package.json package-lock.json ./
@@ -17,7 +17,7 @@ COPY web web
 RUN npm run build
 
 # Production dependencies of the server only.
-FROM node:24-slim AS deps
+FROM node:25-slim AS deps
 WORKDIR /app
 ENV MONGOMS_DISABLE_POSTINSTALL=1
 COPY package.json package-lock.json ./
@@ -27,7 +27,7 @@ COPY web/package.json web/
 COPY e2e/package.json e2e/
 RUN npm ci --omit=dev --workspace server --no-audit --no-fund
 
-FROM node:24-slim
+FROM node:25-slim
 LABEL org.opencontainers.image.source="https://github.com/danieltyukov/devsbooth" \
       org.opencontainers.image.description="Self-hosted audio rooms for developers" \
       org.opencontainers.image.licenses="MIT"
