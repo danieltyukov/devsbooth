@@ -8,7 +8,7 @@ export interface LoginCodeFields {
   email: string;
   /** SHA-256 of the challenge token returned to the requesting browser. */
   challengeHash: string;
-  /** SHA-256 of the requester's IP address, for the per-requester quota. The address is not stored. */
+  /** HMAC of the requester's IP address under a per-process key, for the per-requester quota. */
   requesterHash: string;
   salt: string;
   hash: string;
