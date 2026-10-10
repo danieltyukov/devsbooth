@@ -24,6 +24,8 @@ test('people in a room hear each other, and the host runs the stage', async ({ b
   await expect(hostSeenByGuest).toHaveAttribute('data-connection', 'connected');
   await expect(hostSeenByGuest).toHaveAttribute('data-muted', 'false');
   await expect(hostSeenByGuest).toHaveAttribute('data-speaking', 'true');
+  // The guest plays the host's audio only while the server lists the host as an unmuted speaker.
+  await expect(guest.page.locator('audio[data-audible="true"]')).toHaveCount(1);
 
   // The guest listens, and raises a hand.
   const guestSeenByHost = tile(host.page, guest.username);
@@ -47,6 +49,8 @@ test('people in a room hear each other, and the host runs the stage', async ({ b
   await host.page.getByRole('button', { name: 'On air' }).click();
   await expect(hostSeenByGuest).toHaveAttribute('data-muted', 'true');
   await expect(hostSeenByGuest).toHaveAttribute('data-speaking', 'false');
+  // The host hears the guest, but the guest no longer plays the muted host.
+  await expect(guest.page.locator('audio[data-audible="true"]')).toHaveCount(0);
 
   // Moving the guest back to the audience takes their microphone away.
   await guestSeenByHost.getByRole('button', { name: 'Move to audience' }).click();

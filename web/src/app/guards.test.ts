@@ -8,7 +8,17 @@ describe('safeNext', () => {
   });
 
   it('refuses anything that could leave the app', () => {
-    for (const value of [null, '', 'https://evil.example', '//evil.example', '/\\evil.example', 'rooms']) {
+    for (const value of [
+      null,
+      '',
+      'https://evil.example',
+      '//evil.example',
+      '/\\evil.example',
+      '/\t/evil.example',
+      '/\n/evil.example',
+      'rooms',
+      'javascript:alert(1)',
+    ]) {
       expect(safeNext(value)).toBe('/rooms');
     }
   });
