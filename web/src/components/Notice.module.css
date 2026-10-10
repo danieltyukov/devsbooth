@@ -1,0 +1,16 @@
+.notice {
+  padding: 10px 14px;
+  border-radius: var(--radius-s);
+  border-left: 4px solid;
+  font-size: var(--step-0);
+}
+
+.info {
+  background: var(--console-wash);
+  border-color: var(--console);
+}
+
+.error {
+  background: var(--onair-wash);
+  border-color: var(--onair);
+}

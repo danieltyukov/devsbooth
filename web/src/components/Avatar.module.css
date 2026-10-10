@@ -1,0 +1,17 @@
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  color: #fff;
+  font-weight: 700;
+  font-stretch: 85%;
+  letter-spacing: 0.02em;
+  background: var(--sunken);
+  user-select: none;
+}
+
+.square {
+  border-radius: var(--radius-m);
+}

@@ -1,0 +1,22 @@
+.meter {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+  width: 8px;
+  height: 100%;
+}
+
+.segment {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--meter-off);
+  transition: background-color 80ms linear;
+}
+
+.lit {
+  background: var(--meter);
+}
+
+.hot.lit {
+  background: var(--meter-hot);
+}

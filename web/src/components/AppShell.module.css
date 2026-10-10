@@ -1,0 +1,62 @@
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 10;
+  padding: 8px 12px;
+  background: var(--console);
+  color: var(--on-console);
+  border-radius: var(--radius-s);
+}
+
+.skip:focus {
+  top: 8px;
+}
+
+.header {
+  border-bottom: 1px solid var(--rule);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.home {
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.link {
+  color: var(--ink-soft);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 6px 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.link:hover {
+  color: var(--ink);
+}
+
+.active {
+  color: var(--ink);
+  border-bottom-color: var(--onair);
+}
+
+.profile {
+  display: inline-flex;
+  border-radius: 50%;
+  text-decoration: none;
+}
+
+.main {
+  padding-bottom: 64px;
+}
