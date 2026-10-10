@@ -60,6 +60,7 @@ Everything is optional except where noted. The full list with examples is in [.e
 | `TRUST_PROXY`           | Set to `1` behind a reverse proxy, so client addresses and https are detected.                                            |
 | `ROOM_MAX_PARTICIPANTS` | People per room, default 25. Every pair holds a connection, so keep it modest.                                            |
 | `API_RATE_LIMIT`        | Requests per minute per IP address, default 600. Set `TRUST_PROXY` behind a proxy so this counts visitors, not the proxy. |
+| `REDIS_URL`             | Run several server processes that share presence through Redis. Unset means one process.                                  |
 | `ROOM_EMPTY_TTL`        | Seconds an empty room stays open before it ends, default 300. `0` keeps rooms until the host ends them.                   |
 
 ## Develop

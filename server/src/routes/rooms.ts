@@ -41,10 +41,10 @@ export function roomRoutes(hub: Hub) {
   router.get('/:roomId', async (req, res) => {
     const room = await findLiveRoom(String(req.params.roomId));
     if (!room) throw notFound('This room has ended, or the link is wrong.');
-    if (!(await canEnter(room, currentUser(req)))) {
+    if (!(await canEnter(room, currentUser(req)._id))) {
       throw forbidden('This is a social room. Follow the host to join it.');
     }
-    res.json({ room: toRoomSummary(room, hub.count(room.publicId)) });
+    res.json({ room: toRoomSummary(room, await hub.count(room.publicId)) });
   });
 
   router.patch('/:roomId', async (req, res) => {
@@ -54,7 +54,7 @@ export function roomRoutes(hub: Hub) {
     const input = parse(updateSchema, req.body);
     if (!(await setTopic(room.publicId, input.topic))) throw notFound('This room has ended.');
     hub.roomUpdated(room.publicId, { topic: input.topic });
-    res.json({ room: toRoomSummary({ ...room, topic: input.topic }, hub.count(room.publicId)) });
+    res.json({ room: toRoomSummary({ ...room, topic: input.topic }, await hub.count(room.publicId)) });
   });
 
   router.delete('/:roomId', async (req, res) => {

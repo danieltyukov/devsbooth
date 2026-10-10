@@ -21,6 +21,11 @@ export class RoomLifecycle {
     this.timers.set(roomId, timer);
   }
 
+  /** Like vacant, but leaves an existing timer running instead of restarting it. */
+  ensure(roomId: string): void {
+    if (!this.timers.has(roomId)) this.vacant(roomId);
+  }
+
   occupied(roomId: string): void {
     const timer = this.timers.get(roomId);
     if (timer) clearTimeout(timer);

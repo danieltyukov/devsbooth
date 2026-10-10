@@ -38,6 +38,11 @@ Object.assign(process.env, {
   ROOM_EMPTY_TTL: '0',
   LOG_LEVEL: 'warn',
 });
+// Run the suite with presence shared through Redis, as several processes would use it.
+if (process.env.E2E_REDIS_URL) {
+  process.env.REDIS_URL = process.env.E2E_REDIS_URL;
+  process.env.REDIS_PREFIX = `e2e-${Date.now()}:`;
+}
 
 const stop = async () => {
   await mongod.stop();
