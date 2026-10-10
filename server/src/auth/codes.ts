@@ -18,6 +18,14 @@ export const MAX_CODES_PER_REQUESTER = 5;
 export const MAX_CODES_PER_ADDRESS = 20;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+
+/**
+ * Key for pseudonymizing requester IPs. A plain hash of an IPv4 address can be reversed by trying
+ * all 2^32 of them, so the stored value is an HMAC under a key that exists only in this process.
+ * A restart forgets the key, which only resets the hourly per-requester counts.
+ */
+const requesterKey = randomBytes(32);
+const pseudonymize = (requester: string) => createHmac('sha256', requesterKey).update(requester).digest('hex');
 const hashCode = (salt: string, code: string) => createHmac('sha256', salt).update(code).digest('hex');
 
 export interface IssuedCode {
@@ -40,7 +48,7 @@ export async function issueCode(email: string, requester: string, now = new Date
   const record = await LoginCode.create({
     email,
     challengeHash: sha256(challenge),
-    requesterHash: sha256(requester),
+    requesterHash: pseudonymize(requester),
     salt,
     hash: hashCode(salt, code),
     attempts: 0,
