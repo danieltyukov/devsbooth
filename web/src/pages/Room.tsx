@@ -202,6 +202,8 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
     }
 
     function onKeyDown(event: KeyboardEvent) {
+      // Leave browser and system shortcuts such as Ctrl+H (history) and Cmd+H (hide) alone.
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.defaultPrevented || event.repeat || editableTarget(event.target)) return;
       const key = event.key.toLowerCase();
       if (self?.role === 'speaker' && key === 'm' && mic.status === 'on') {
@@ -402,6 +404,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
                 aria-pressed={!self.muted}
                 disabled={mic.status !== 'on'}
                 title={self.muted ? 'Unmute (M)' : 'Mute (M)'}
+                aria-keyshortcuts="M"
                 onClick={() => setMuted(!self.muted)}
               >
                 {self.muted ? <MicOff aria-hidden="true" /> : <Mic aria-hidden="true" />}
@@ -413,6 +416,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
                 icon={<Hand aria-hidden="true" />}
                 aria-pressed={self.handRaised}
                 title={self.handRaised ? 'Lower hand (H)' : 'Raise hand (H)'}
+                aria-keyshortcuts="H"
                 onClick={() => setHandRaised(!self.handRaised)}
               >
                 {self.handRaised ? 'Lower hand' : 'Raise hand'}
@@ -421,10 +425,7 @@ function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
             {self.role === 'speaker' && inputs.length > 1 && (
               <label className={styles.device}>
                 <span className="visually-hidden">Microphone</span>
-                <select
-                  value={mic.deviceId ?? ''}
-                  onChange={(event) => switchMicrophone(event.target.value)}
-                >
+                <select value={mic.deviceId ?? ''} onChange={(event) => switchMicrophone(event.target.value)}>
                   {inputs.map((input) => (
                     <option key={input.deviceId} value={input.deviceId}>
                       {input.label}

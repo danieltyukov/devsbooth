@@ -53,6 +53,9 @@ test('people in a room hear each other, and the host runs the stage', async ({ b
   );
   await guest.page.keyboard.press('h');
   await expect(guestSeenByHost).toHaveAttribute('data-hand', 'false');
+  // Browser shortcuts such as Ctrl+H are left alone.
+  await guest.page.keyboard.press('Control+h');
+  await expect(guestSeenByHost).toHaveAttribute('data-hand', 'false');
   await guest.page.getByRole('button', { name: 'Raise hand' }).click();
   await expect(guestSeenByHost).toHaveAttribute('data-hand', 'true');
   await expect(host.page.getByText('1 hand up')).toBeVisible();
