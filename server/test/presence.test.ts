@@ -79,6 +79,22 @@ describe.each(stores)('%s presence', (_name, make) => {
     await presence.close();
   });
 
+  it('joins atomically, refusing full rooms and rooms being ended', async () => {
+    const presence = await make();
+    // Ten joins at once into a room for three: exactly three get in.
+    const results = await Promise.all(
+      Array.from({ length: 10 }, (_, i) => presence.join('busy', participant(`p${i}`), 3)),
+    );
+    expect(results.filter((result) => result === 'added')).toHaveLength(3);
+    expect(results.filter((result) => result === 'full')).toHaveLength(7);
+    expect(await presence.count('busy')).toBe(3);
+
+    await presence.markEnding('closing', 10_000);
+    expect(await presence.join('closing', participant('late'), 10)).toBe('ending');
+    expect(await presence.count('closing')).toBe(0);
+    await presence.close();
+  });
+
   it('remembers rooms being ended for a while', async () => {
     const presence = await make();
     await presence.markEnding('r', 200);

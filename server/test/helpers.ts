@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -147,6 +147,7 @@ export async function startTestApp(
       await main.close();
       await mongoose.connection.dropDatabase();
       await disconnectDb();
+      await rm(dataDir, { recursive: true, force: true });
     },
   };
 }

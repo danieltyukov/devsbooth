@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import type { Participant, ParticipantPatch } from '@devsbooth/shared';
 import { log } from '../log';
-import type { PresenceStore, Removal } from './presence';
+import type { AddResult, PresenceStore, Removal } from './presence';
 
 /*
  * Keys, all under a prefix:
@@ -23,6 +23,14 @@ redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
 redis.call('HSET', KEYS[2], 'room', ARGV[3], 'server', ARGV[4])
 redis.call('SADD', KEYS[3], ARGV[1])
 return 1`;
+
+const JOIN = `
+if redis.call('EXISTS', KEYS[4]) == 1 then return 'ending' end
+if redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[5]) then return 'full' end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+redis.call('HSET', KEYS[2], 'room', ARGV[3], 'server', ARGV[4])
+redis.call('SADD', KEYS[3], ARGV[1])
+return 'added'`;
 
 const REMOVE = `
 local roomId = redis.call('HGET', KEYS[1], 'room')
@@ -60,6 +68,13 @@ return out`;
 
 interface Scripts {
   presenceAdd(room: string, peer: string, serverPeers: string, ...args: string[]): Promise<number>;
+  presenceJoin(
+    room: string,
+    peer: string,
+    serverPeers: string,
+    ending: string,
+    ...args: string[]
+  ): Promise<AddResult>;
   presenceRemove(peer: string, peerId: string, prefix: string): Promise<[string, string, number] | null>;
   presenceClear(room: string, prefix: string): Promise<string[]>;
   presenceUpdate(peer: string, peerId: string, patch: string, prefix: string): Promise<string | null>;
@@ -84,6 +99,7 @@ export class RedisPresence implements PresenceStore {
 
   private constructor(redis: Redis, options: Required<RedisPresenceOptions>) {
     redis.defineCommand('presenceAdd', { numberOfKeys: 3, lua: ADD });
+    redis.defineCommand('presenceJoin', { numberOfKeys: 4, lua: JOIN });
     redis.defineCommand('presenceRemove', { numberOfKeys: 1, lua: REMOVE });
     redis.defineCommand('presenceClear', { numberOfKeys: 1, lua: CLEAR });
     redis.defineCommand('presenceUpdate', { numberOfKeys: 1, lua: UPDATE });
@@ -128,6 +144,20 @@ export class RedisPresence implements PresenceStore {
       JSON.stringify(participant),
       roomId,
       this.serverId,
+    );
+  }
+
+  async join(roomId: string, participant: Participant, max: number): Promise<AddResult> {
+    return this.redis.presenceJoin(
+      this.key('room', roomId),
+      this.key('peer', participant.peerId),
+      this.key('server', this.serverId, 'peers'),
+      this.key('ending', roomId),
+      participant.peerId,
+      JSON.stringify(participant),
+      roomId,
+      this.serverId,
+      String(max),
     );
   }
 

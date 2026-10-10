@@ -19,7 +19,7 @@ describe.skipIf(!redisUrl)('several server processes', () => {
 
   beforeAll(async () => {
     a = await startTestApp(
-      {},
+      { ROOM_MAX_PARTICIPANTS: '4' },
       {
         backend: () => redisBackend(redisUrl!, { prefix, heartbeatMs: 200, heartbeatTtlMs: 600 }),
         hub: { sweepMs: 200 },
@@ -101,6 +101,16 @@ describe.skipIf(!redisUrl)('several server processes', () => {
     await b.http.delete(`/api/rooms/${room.id}`).set('Cookie', host.cookie).expect(204);
     await Promise.all([endedA, endedB]);
     expect(await a.instance.hub.count(room.id)).toBe(0);
+  });
+
+  it('never overfills a room when people join through different processes at once', async () => {
+    const room = await createRoom();
+    const people = await Promise.all(Array.from({ length: 6 }, (_, i) => a.createUser(`cl_crowd${i}`)));
+    const sockets = await Promise.all(people.map((p, i) => (i % 2 ? b : a).socket(p.cookie)));
+    const capped = await Promise.all(sockets.map((s) => emitWithAck(s, 'room:join', { roomId: room.id })));
+    const admitted = capped.filter((result) => result.ok).length;
+    expect(admitted).toBeLessThanOrEqual(4);
+    expect(await a.instance.hub.count(room.id)).toBe(admitted);
   });
 
   it('disconnects a session on every process when it logs out', async () => {

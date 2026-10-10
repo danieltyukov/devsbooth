@@ -1,5 +1,7 @@
 import type { Participant, ParticipantPatch } from '@devsbooth/shared';
 
+export type AddResult = 'added' | 'full' | 'ending';
+
 export interface Removal {
   roomId: string;
   participant: Participant;
@@ -15,6 +17,11 @@ export interface PresenceStore {
   /** True when other processes see the same state. */
   readonly shared: boolean;
   add(roomId: string, participant: Participant): Promise<void>;
+  /**
+   * Adds a participant only if the room has fewer than `max` people and is not being ended,
+   * checked and applied as one step so concurrent joins cannot overfill a room.
+   */
+  join(roomId: string, participant: Participant, max: number): Promise<AddResult>;
   /** Removes a peer and reports which room it left. Null if it was not in one. */
   remove(peerId: string): Promise<Removal | null>;
   /** Removes everyone from a room and returns who was there. */
@@ -50,6 +57,14 @@ export class MemoryPresence implements PresenceStore {
     }
     room.set(participant.peerId, { ...participant });
     this.roomByPeer.set(participant.peerId, roomId);
+  }
+
+  async join(roomId: string, participant: Participant, max: number): Promise<AddResult> {
+    // No await between the checks and the add, so this is atomic within the process.
+    if (this.ending.has(roomId)) return 'ending';
+    if ((this.rooms.get(roomId)?.size ?? 0) >= max) return 'full';
+    await this.add(roomId, participant);
+    return 'added';
   }
 
   async remove(peerId: string): Promise<Removal | null> {

@@ -67,6 +67,10 @@ function fail(code: ApiErrorCode, message: string) {
 }
 
 const channel = (roomId: string) => `room:${roomId}`;
+/** Every socket of one session joins this, so logout can reach them on any process at once. */
+const sessionChannel = (sessionHash: string) => `session:${sessionHash}`;
+/** How often an open socket re-checks that its session still exists. */
+const SESSION_CHECK_MS = 60_000;
 
 /** How long a room stays marked as ending, so joins that started before it ended are refused. */
 const ENDING_MS = 60_000;
@@ -204,6 +208,20 @@ export function createHub(
   io.on('connection', (socket: IoSocket) => {
     const userId = new Types.ObjectId(socket.data.userId);
     const summary = socket.data.summary;
+    void socket.join(sessionChannel(socket.data.sessionHash));
+
+    /** Disconnects the socket if its session ended (logout, expiry) and reports whether it did. */
+    const sessionEnded = async (): Promise<boolean> => {
+      if (await sessionIsActive(socket.data.sessionHash)) return false;
+      socket.disconnect(true);
+      return true;
+    };
+    // Expiry, or a logout broadcast this process missed, still ends the socket within a minute.
+    const sessionCheck = setInterval(() => {
+      sessionEnded().catch((err: unknown) => log.warn('Session check failed', { err }));
+    }, SESSION_CHECK_MS);
+    sessionCheck.unref();
+    socket.on('disconnect', () => clearInterval(sessionCheck));
 
     // Presence calls are async, so a socket's events run one at a time, in the order they came:
     // two quick mute toggles cannot read the same stale state, and an offer stays ahead of its
@@ -244,11 +262,6 @@ export function createHub(
             io.to(other.peerId).emit('room:kicked', { reason: 'joined-elsewhere' });
             await evict(other.peerId);
           }
-          if ((await presence.count(roomId)) >= config.room.maxParticipants) {
-            return ack(fail('room_full', `This room is full (${config.room.maxParticipants} people).`));
-          }
-          // The host may have ended the room while this join was waiting on the database.
-          if (await presence.isEnding(roomId)) return ack(fail('room_ended', 'This room has ended.'));
           if (!socket.connected) return;
 
           const self: Participant = {
@@ -258,8 +271,18 @@ export function createHub(
             muted: true,
             handRaised: false,
           };
+          // Capacity and the ending marker are checked in the same step as the add, so concurrent
+          // joins, on this process or another, cannot overfill a room or slip into one being ended.
+          const result = await presence.join(roomId, self, config.room.maxParticipants);
+          if (result === 'full') {
+            return ack(fail('room_full', `This room is full (${config.room.maxParticipants} people).`));
+          }
+          if (result === 'ending') return ack(fail('room_ended', 'This room has ended.'));
+          if (!socket.connected) {
+            await evict(socket.id);
+            return;
+          }
           const participants = (await presence.list(roomId)).filter((p) => p.peerId !== socket.id);
-          await presence.add(roomId, self);
           lifecycle.occupied(roomId);
           await socket.join(channel(roomId));
           socket.to(channel(roomId)).emit('peer:joined', self);
@@ -326,6 +349,8 @@ export function createHub(
         const { peerId, role } = parsed.data;
 
         try {
+          // Host controls need a live session, not just a socket that was opened with one.
+          if (await sessionEnded()) return;
           const [roomId, targetRoom, target] = await Promise.all([
             presence.roomOf(socket.id),
             presence.roomOf(peerId),
@@ -366,10 +391,9 @@ export function createHub(
     endRoom,
     scheduleIdleRooms,
     async dropSession(token) {
-      const hash = hashToken(token);
-      for (const socket of await io.fetchSockets()) {
-        if (socket.data.sessionHash === hash) socket.disconnect(true);
-      }
+      // A broadcast through the adapter: it does not wait for every process to answer, so one
+      // slow process cannot leave a logged-out socket connected.
+      io.in(sessionChannel(hashToken(token))).disconnectSockets(true);
     },
     async shutdown() {
       if (closing) return;
