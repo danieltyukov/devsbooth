@@ -1,0 +1,50 @@
+.page {
+  padding-top: clamp(32px, 8vw, 80px);
+}
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.info {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 36rem;
+}
+
+.name {
+  font-size: var(--step-4);
+  font-stretch: 66%;
+  overflow-wrap: anywhere;
+}
+
+.handle {
+  margin-top: -4px;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.bio {
+  font-size: var(--step-1);
+  color: var(--ink-soft);
+}
+
+.counts {
+  display: flex;
+  gap: 20px;
+  color: var(--ink-soft);
+}
+
+.number {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  margin-top: 8px;
+}

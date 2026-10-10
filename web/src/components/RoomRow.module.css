@@ -1,0 +1,121 @@
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 12px 18px 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.row:hover {
+  background: var(--surface);
+}
+
+.lamp {
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--meter-off);
+}
+
+.row[data-live='true'] .lamp {
+  background: var(--onair);
+  box-shadow: 0 0 0 4px var(--onair-wash);
+}
+
+.main {
+  min-width: 0;
+}
+
+.topic {
+  display: block;
+  color: var(--ink);
+  font-size: var(--step-2);
+  font-weight: 700;
+  font-stretch: var(--condensed);
+  line-height: 1.15;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* The whole row is clickable through the topic link. */
+.topic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.topic:focus-visible {
+  outline: none;
+}
+
+.row:has(.topic:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+}
+
+.type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.type svg {
+  width: 14px;
+  height: 14px;
+}
+
+.side {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.faces {
+  display: flex;
+}
+
+.faces > * + * {
+  margin-left: -8px;
+}
+
+.faces > * {
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.row:hover .faces > * {
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.count {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .side {
+    grid-column: 2;
+    justify-items: start;
+    grid-auto-flow: column;
+    align-items: center;
+  }
+}
