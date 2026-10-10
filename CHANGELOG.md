@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-10
+
 ### Added
 
 - Room keyboard shortcuts: speakers can press M to mute or unmute, and listeners can press H to raise or lower a hand ([#16](https://github.com/danieltyukov/devsbooth/issues/16), thanks @pollychen-lab).
@@ -14,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The host can change the room topic, and everyone in the room sees it at once ([#18](https://github.com/danieltyukov/devsbooth/issues/18)).
 - Audio can go through a LiveKit SFU instead of the browser mesh, for rooms of hundreds. Speakers publish once, LiveKit enforces who may publish, and the default room cap becomes 200 ([#20](https://github.com/danieltyukov/devsbooth/issues/20)).
 - Several server processes can run side by side: with `REDIS_URL`, presence lives in Redis and the Socket.IO Redis adapter carries events between processes. Processes that stop are swept out of their rooms ([#19](https://github.com/danieltyukov/devsbooth/issues/19)).
+
+### Security
+
+- The 2022 prototype had committed env files with database and Twilio credentials. Those credentials are revoked, and the files are now removed from the git history, which was rewritten on 2026-10-10. Clones and forks made before then still contain them; clone again rather than pulling.
 
 ## [1.0.0] - 2026-10-10
 
@@ -38,5 +44,6 @@ DevsBooth is back as a community project. This release is a rewrite in TypeScrip
 - Server integration tests, web unit tests, and Playwright end-to-end tests in which two browsers with fake microphones hear each other.
 - Contributor guide, security policy, code of conduct, architecture and self-hosting docs, and a project website.
 
-[Unreleased]: https://github.com/danieltyukov/devsbooth/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/danieltyukov/devsbooth/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/danieltyukov/devsbooth/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/danieltyukov/devsbooth/releases/tag/v1.0.0
