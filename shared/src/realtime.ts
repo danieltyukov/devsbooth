@@ -26,8 +26,7 @@ export interface IceCandidate {
 export type SignalPayload = { description: SessionDescription } | { candidate: IceCandidate };
 
 export type Ack<T extends object = object> =
-  | ({ ok: true } & T)
-  | { ok: false; error: { code: ApiErrorCode; message: string } };
+  ({ ok: true } & T) | { ok: false; error: { code: ApiErrorCode; message: string } };
 
 export interface JoinResult {
   room: RoomSummary;
@@ -36,7 +35,9 @@ export interface JoinResult {
   participants: Participant[];
 }
 
-export type ParticipantPatch = { peerId: string } & Partial<Pick<Participant, 'role' | 'muted' | 'handRaised'>>;
+export type ParticipantPatch = { peerId: string } & Partial<
+  Pick<Participant, 'role' | 'muted' | 'handRaised'>
+>;
 
 export interface ServerToClientEvents {
   'peer:joined': (participant: Participant) => void;

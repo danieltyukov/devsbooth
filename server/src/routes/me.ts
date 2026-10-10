@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { AVATAR_TYPES, LIMITS, USERNAME_PATTERN } from '@devsbooth/shared';
 import { currentUser, requireUser } from '../auth/middleware';
 import { HttpError, parse } from '../http/errors';
-import { User } from '../models/user';
 import { deleteAvatar, saveAvatar } from '../users/avatars';
 import { toMe } from '../users/dto';
 
@@ -29,7 +28,17 @@ const profileSchema = z
   .partial();
 
 /** Usernames that would collide with app routes or read as official. */
-const RESERVED = new Set(['admin', 'api', 'devsbooth', 'me', 'moderator', 'root', 'settings', 'support', 'system']);
+const RESERVED = new Set([
+  'admin',
+  'api',
+  'devsbooth',
+  'me',
+  'moderator',
+  'root',
+  'settings',
+  'support',
+  'system',
+]);
 
 function isDuplicateKey(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 11000;
@@ -48,7 +57,9 @@ export function meRoutes(deps: { avatarsDir: string }) {
     const input = parse(profileSchema, req.body);
     if (input.username !== undefined && input.username !== user.username) {
       if (RESERVED.has(input.username)) {
-        throw new HttpError(409, 'conflict', 'That username is taken.', { username: 'That username is taken.' });
+        throw new HttpError(409, 'conflict', 'That username is taken.', {
+          username: 'That username is taken.',
+        });
       }
       user.username = input.username;
     }
@@ -64,7 +75,9 @@ export function meRoutes(deps: { avatarsDir: string }) {
       await user.save();
     } catch (err) {
       if (isDuplicateKey(err)) {
-        throw new HttpError(409, 'conflict', 'That username is taken.', { username: 'That username is taken.' });
+        throw new HttpError(409, 'conflict', 'That username is taken.', {
+          username: 'That username is taken.',
+        });
       }
       throw err;
     }

@@ -23,7 +23,10 @@ const userSchema = new Schema<UserFields>(
   { timestamps: true },
 );
 
-userSchema.index({ username: 1 }, { unique: true, partialFilterExpression: { username: { $type: 'string' } } });
+userSchema.index(
+  { username: 1 },
+  { unique: true, partialFilterExpression: { username: { $type: 'string' } } },
+);
 
 export const User = model<UserFields>('User', userSchema, 'users');
 export type UserDoc = HydratedDocument<UserFields>;

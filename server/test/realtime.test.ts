@@ -19,7 +19,11 @@ afterAll(async () => {
 });
 
 async function createRoom(type = 'open', cookie = host.cookie): Promise<RoomSummary> {
-  const res = await t.http.post('/api/rooms').set('Cookie', cookie).send({ topic: 'Realtime', type }).expect(201);
+  const res = await t.http
+    .post('/api/rooms')
+    .set('Cookie', cookie)
+    .send({ topic: 'Realtime', type })
+    .expect(201);
   return res.body.room as RoomSummary;
 }
 
@@ -93,10 +97,20 @@ describe('joining a room', () => {
     expect(denied).toMatchObject({ ok: false, error: { code: 'forbidden' } });
 
     const room = await createRoom();
-    const others = [await t.socket(host.cookie), await t.socket(guest.cookie), await t.socket(await t.signIn('rt_extra@example.com').then(async (cookie) => {
-      await t.http.patch('/api/me').set('Cookie', cookie).send({ name: 'Extra', username: 'rt_extra' }).expect(200);
-      return cookie;
-    }))];
+    const others = [
+      await t.socket(host.cookie),
+      await t.socket(guest.cookie),
+      await t.socket(
+        await t.signIn('rt_extra@example.com').then(async (cookie) => {
+          await t.http
+            .patch('/api/me')
+            .set('Cookie', cookie)
+            .send({ name: 'Extra', username: 'rt_extra' })
+            .expect(200);
+          return cookie;
+        }),
+      ),
+    ];
     for (const socket of others) {
       expect((await emitWithAck(socket, 'room:join', { roomId: room.id })).ok).toBe(true);
     }
@@ -160,8 +174,15 @@ describe('roles and state', () => {
     expect(hostStays).toMatchObject({ ok: false, error: { code: 'bad_request' } });
 
     const promoted = next(b, 'peer:updated');
-    expect(await emitWithAck(a, 'role:set', { peerId: jb.self.peerId, role: 'speaker' })).toEqual({ ok: true });
-    expect(await promoted).toEqual({ peerId: jb.self.peerId, role: 'speaker', handRaised: false, muted: true });
+    expect(await emitWithAck(a, 'role:set', { peerId: jb.self.peerId, role: 'speaker' })).toEqual({
+      ok: true,
+    });
+    expect(await promoted).toEqual({
+      peerId: jb.self.peerId,
+      role: 'speaker',
+      handRaised: false,
+      muted: true,
+    });
 
     const stored = await Room.findOne({ publicId: room.id }).lean();
     expect(stored?.speakers.map(String)).toContain(jb.self.user.id);

@@ -97,7 +97,10 @@ export function createApp(config: Config, options: AppOptions = {}): AppInstance
   api.use(apiNotFound);
   app.use('/api', api);
 
-  app.use(AVATAR_ROUTE, express.static(config.avatarsDir, { immutable: true, maxAge: '30d', fallthrough: false }));
+  app.use(
+    AVATAR_ROUTE,
+    express.static(config.avatarsDir, { immutable: true, maxAge: '30d', fallthrough: false }),
+  );
 
   if (config.webDist && existsSync(path.join(config.webDist, 'index.html'))) {
     const webDist = config.webDist;

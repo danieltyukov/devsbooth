@@ -123,10 +123,13 @@ export function next<E extends keyof ServerToClientEvents>(
 ): Promise<Parameters<ServerToClientEvents[E]>[0]> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${String(event)}`)), ms);
-    socket.once(event as never, ((payload: never) => {
-      clearTimeout(timer);
-      resolve(payload);
-    }) as never);
+    socket.once(
+      event as never,
+      ((payload: never) => {
+        clearTimeout(timer);
+        resolve(payload);
+      }) as never,
+    );
   });
 }
 

@@ -18,7 +18,11 @@ export async function saveAvatar(dir: string, userId: string, image: Buffer): Pr
       .webp({ quality: 82 })
       .toFile(path.join(dir, name));
   } catch {
-    throw new HttpError(400, 'bad_request', 'That file is not an image we can read. Try a PNG, JPEG or WebP.');
+    throw new HttpError(
+      400,
+      'bad_request',
+      'That file is not an image we can read. Try a PNG, JPEG or WebP.',
+    );
   }
   return name;
 }

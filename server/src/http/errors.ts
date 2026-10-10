@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
-import { z } from 'zod';
+import { type z } from 'zod';
 import type { ApiErrorBody, ApiErrorCode } from '@devsbooth/shared';
 import { log } from '../log';
 
@@ -62,7 +62,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   // http-errors from Express middleware, such as serve-static's 404 for a missing file.
   const status = parserError.status;
   if (typeof status === 'number' && status >= 400 && status < 500) {
-    res.status(status).json(body(status === 404 ? 'not_found' : 'bad_request', status === 404 ? 'Not found.' : 'Bad request.'));
+    res
+      .status(status)
+      .json(
+        body(status === 404 ? 'not_found' : 'bad_request', status === 404 ? 'Not found.' : 'Bad request.'),
+      );
     return;
   }
   log.error('Unhandled error', { method: req.method, path: req.path, err });

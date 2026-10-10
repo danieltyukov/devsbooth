@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import nodemailer from 'nodemailer';
 import type { Config } from '../config';
@@ -49,7 +49,10 @@ function fileMailer(outboxDir: string, appUrl: URL): Mailer {
       await mkdir(outboxDir, { recursive: true });
       const message = { ...codeEmail(email, code, appUrl), sentAt: new Date().toISOString() };
       const name = `${Date.now()}-${email.replace(/[^a-z0-9]+/gi, '_')}.json`;
-      await writeFile(path.join(outboxDir, name), JSON.stringify(message, null, 2));
+      // Write then rename, so a reader never sees a half-written file.
+      const partial = path.join(outboxDir, `.${name}.partial`);
+      await writeFile(partial, JSON.stringify(message, null, 2));
+      await rename(partial, path.join(outboxDir, name));
     },
   };
 }

@@ -28,7 +28,9 @@ describe('sign-in codes', () => {
     expect(challenge.length).toBeGreaterThanOrEqual(32);
 
     // Spaces are ignored, so a code copied as "1234 5678" works.
-    const res = await verify('ada@example.com', `${code.slice(0, 4)} ${code.slice(4)}`, challenge).expect(200);
+    const res = await verify('ada@example.com', `${code.slice(0, 4)} ${code.slice(4)}`, challenge).expect(
+      200,
+    );
     expect(res.body.user).toMatchObject({ email: 'ada@example.com', username: null, onboarded: false });
 
     const cookie = (res.headers['set-cookie'] as unknown as string[])[0]!;
@@ -71,7 +73,10 @@ describe('sign-in codes', () => {
     );
     expect(results.filter((res) => res.body.error?.code === 'code_invalid')).toHaveLength(MAX_ATTEMPTS);
     const after = await verify('race@example.com', code, challenge).expect(400);
-    expect(after.body.error).toMatchObject({ code: 'code_expired', message: expect.stringMatching(/attempts/) });
+    expect(after.body.error).toMatchObject({
+      code: 'code_expired',
+      message: expect.stringMatching(/attempts/),
+    });
   });
 
   it('caps the codes one requester can have sent to an address', async () => {
