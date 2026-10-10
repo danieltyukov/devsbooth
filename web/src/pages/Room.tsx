@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, Hand, Link2, Mic, MicOff, Volume2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
-import type { IceServer, Participant, Role } from '@devsbooth/shared';
+import type { ClientConfig, Participant, Role } from '@devsbooth/shared';
 import { api, errorMessage } from '../api/client';
 import { useClientConfig } from '../api/queries';
 import { Avatar } from '../components/Avatar';
@@ -37,7 +37,7 @@ export function RoomPage() {
     <RoomSession
       key={`${roomId}:${attempt}`}
       roomId={roomId}
-      iceServers={config.data.iceServers}
+      ice={config.data}
       onRejoin={() => setAttempt((n) => n + 1)}
     />
   );
@@ -147,13 +147,13 @@ function ParticipantTile({
 
 interface SessionProps {
   roomId: string;
-  iceServers: IceServer[];
+  ice: ClientConfig;
   onRejoin: () => void;
 }
 
-function RoomSession({ roomId, iceServers, onRejoin }: SessionProps) {
+function RoomSession({ roomId, ice, onRejoin }: SessionProps) {
   const navigate = useNavigate();
-  const session = useRoomSession(roomId, iceServers);
+  const session = useRoomSession(roomId, ice);
   const { state, self, levels, mic } = session;
   const inputs = useAudioInputs(mic.status === 'on');
   const [audioBlocked, setAudioBlocked] = useState(false);

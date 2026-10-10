@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { ClientToServerEvents, IceServer, Role, ServerToClientEvents } from '@devsbooth/shared';
+import type { ClientConfig, ClientToServerEvents, Role, ServerToClientEvents } from '@devsbooth/shared';
 import { LevelStore, LocalMeter } from './levels';
 import { Mesh } from './mesh';
 import { initialRoomState, roomReducer, selectSelf } from './room-state';
@@ -46,7 +46,10 @@ async function openMicrophone(deviceId: string | undefined): Promise<MediaStream
  * Joins a room and runs everything that keeps you in it: the signaling socket, the peer
  * connections, your microphone, and the audio levels behind the meters.
  */
-export function useRoomSession(roomId: string, iceServers: IceServer[] | undefined) {
+export function useRoomSession(
+  roomId: string,
+  ice: Pick<ClientConfig, 'iceServers' | 'iceTransportPolicy'> | undefined,
+) {
   const [state, dispatch] = useReducer(roomReducer, initialRoomState);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [mic, setMic] = useState<{ status: MicStatus; deviceId?: string }>({ status: 'off' });
@@ -111,13 +114,16 @@ export function useRoomSession(roomId: string, iceServers: IceServer[] | undefin
 
   // The socket and the mesh live as long as you are in this room.
   useEffect(() => {
-    if (!iceServers) return;
+    if (!ice) return;
     const socket: RoomSocket = io({ transports: ['websocket'], autoConnect: false });
-    const mesh = new Mesh(iceServers, {
-      signal: (to, payload) => socket.emit('rtc:signal', { to, ...payload }),
-      track: (peerId, stream) => setRemoteStreams((current) => ({ ...current, [peerId]: stream })),
-      state: (peerId, connection) => dispatch({ type: 'connection', peerId, state: connection }),
-    });
+    const mesh = new Mesh(
+      { iceServers: ice.iceServers, iceTransportPolicy: ice.iceTransportPolicy },
+      {
+        signal: (to, payload) => socket.emit('rtc:signal', { to, ...payload }),
+        track: (peerId, stream) => setRemoteStreams((current) => ({ ...current, [peerId]: stream })),
+        state: (peerId, connection) => dispatch({ type: 'connection', peerId, state: connection }),
+      },
+    );
     socketRef.current = socket;
     meshRef.current = mesh;
     let active = true;
@@ -194,7 +200,7 @@ export function useRoomSession(roomId: string, iceServers: IceServer[] | undefin
       socketRef.current = null;
       meshRef.current = null;
     };
-  }, [roomId, iceServers, levels, applyRole, releaseMicrophone]);
+  }, [roomId, ice, levels, applyRole, releaseMicrophone]);
 
   useEffect(() => {
     silentRef.current = new Set(

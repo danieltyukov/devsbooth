@@ -15,6 +15,7 @@ export function metaRoutes(config: Config) {
   router.get('/config', requireUser, (_req, res) => {
     const body: ClientConfig = {
       iceServers: config.iceServers,
+      iceTransportPolicy: config.iceTransportPolicy,
       maxParticipants: config.room.maxParticipants,
     };
     res.json(body);

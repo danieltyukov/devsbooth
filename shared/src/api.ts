@@ -51,6 +51,8 @@ export interface IceServer {
 
 export interface ClientConfig {
   iceServers: IceServer[];
+  /** 'relay' sends all audio through TURN, hiding participants' IP addresses from each other. */
+  iceTransportPolicy: 'all' | 'relay';
   maxParticipants: number;
 }
 
