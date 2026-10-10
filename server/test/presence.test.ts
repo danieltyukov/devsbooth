@@ -149,6 +149,7 @@ describe.skipIf(!redisUrl)('redis presence across processes', () => {
     expect(await b.sweep()).toEqual([]);
     await sleep(600);
     expect(await b.sweep()).toEqual([{ roomId: 'room', participant: participant('on-a'), empty: true }]);
+    await a.close().catch(() => {});
     await b.close();
   });
 });

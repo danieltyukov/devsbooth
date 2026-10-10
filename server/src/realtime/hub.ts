@@ -118,6 +118,10 @@ export function createHub(
   });
   const timers: NodeJS.Timeout[] = [];
   let closing = false;
+  /** Each socket's queue of event handlers, so shutdown can wait for work in flight. */
+  const queues = new Map<string, Promise<void>>();
+  /** Peers this process put into presence, so shutdown can take all of them out. */
+  const localPeers = new Set<string>();
 
   /** Ends an idle room, unless someone joined it, possibly through another process. */
   async function expire(roomId: string): Promise<void> {
@@ -144,6 +148,7 @@ export function createHub(
 
   /** Takes a peer out of its room, wherever its socket lives, and tells the rest of the room. */
   async function evict(peerId: string): Promise<void> {
+    localPeers.delete(peerId);
     const left = await presence.remove(peerId);
     if (!left) return;
     io.in(peerId).socketsLeave(channel(left.roomId));
@@ -226,13 +231,16 @@ export function createHub(
     // Presence calls are async, so a socket's events run one at a time, in the order they came:
     // two quick mute toggles cannot read the same stale state, and an offer stays ahead of its
     // ICE candidates.
-    let queue: Promise<void> = Promise.resolve();
     const inOrder =
       <A extends unknown[]>(handler: (...args: A) => Promise<void>) =>
       (...args: A) => {
-        queue = queue
+        const queue = (queues.get(socket.id) ?? Promise.resolve())
           .then(() => (closing ? undefined : handler(...args)))
           .catch((err: unknown) => log.error('Socket handler failed', { err }));
+        queues.set(socket.id, queue);
+        void queue.then(() => {
+          if (queues.get(socket.id) === queue) queues.delete(socket.id);
+        });
       };
 
     socket.on(
@@ -278,6 +286,7 @@ export function createHub(
             return ack(fail('room_full', `This room is full (${config.room.maxParticipants} people).`));
           }
           if (result === 'ending') return ack(fail('room_ended', 'This room has ended.'));
+          localPeers.add(socket.id);
           if (!socket.connected) {
             await evict(socket.id);
             return;
@@ -400,10 +409,12 @@ export function createHub(
       closing = true;
       for (const timer of timers) clearInterval(timer);
       lifecycle.dispose();
-      for (const socket of io.sockets.sockets.values()) {
-        await evict(socket.id).catch((err: unknown) =>
-          log.warn('Could not remove a peer on shutdown', { err }),
-        );
+      // Let handlers already running finish while Redis and the adapter are still open.
+      await Promise.allSettled([...queues.values()]);
+      // Then take out every peer this process added, including sockets that already went away
+      // but whose disconnect handler had not run yet.
+      for (const peerId of [...localPeers]) {
+        await evict(peerId).catch((err: unknown) => log.warn('Could not remove a peer on shutdown', { err }));
       }
     },
   };

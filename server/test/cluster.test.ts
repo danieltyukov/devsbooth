@@ -158,5 +158,6 @@ describe.skipIf(!redisUrl)('several server processes', () => {
     const left = next(onA, 'peer:left', 5_000);
     expect(await left).toEqual({ peerId: 'ghost-peer' });
     expect(await a.instance.hub.count(room.id)).toBe(1);
+    await dead.close().catch(() => {});
   });
 });
