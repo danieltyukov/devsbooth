@@ -27,7 +27,7 @@ export class Mesh {
   private localTrack: MediaStreamTrack | null = null;
 
   constructor(
-    private readonly iceServers: IceServer[],
+    private readonly ice: { iceServers: IceServer[]; iceTransportPolicy: RTCIceTransportPolicy },
     private readonly events: MeshEvents,
   ) {}
 
@@ -107,7 +107,7 @@ export class Mesh {
 
   private create(peerId: string): Peer {
     this.hangUp(peerId);
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const pc = new RTCPeerConnection(this.ice);
     const peer: Peer = { pc, sender: null, pending: [], queue: Promise.resolve() };
     pc.onicecandidate = (event) => {
       if (event.candidate) this.events.signal(peerId, { candidate: event.candidate.toJSON() });

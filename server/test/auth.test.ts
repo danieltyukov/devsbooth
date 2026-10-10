@@ -162,5 +162,6 @@ describe('request guard', () => {
     const res = await t.http.get('/api/config').set('Cookie', cookie).expect(200);
     expect(res.body.maxParticipants).toBe(25);
     expect(res.body.iceServers).toEqual([{ urls: 'stun:stun.l.google.com:19302' }]);
+    expect(res.body.iceTransportPolicy).toBe('all');
   });
 });

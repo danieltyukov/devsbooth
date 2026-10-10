@@ -24,6 +24,7 @@ const envSchema = z.object({
   MAIL_FROM: z.string().min(1).default('DevsBooth <no-reply@devsbooth.local>'),
   MAIL_OUTBOX_DIR: z.string().min(1).optional(),
   ICE_SERVERS: z.string().optional(),
+  ICE_TRANSPORT_POLICY: z.enum(['all', 'relay']).default('all'),
   ROOM_MAX_PARTICIPANTS: z.coerce.number().int().min(2).max(100).default(25),
   ROOM_EMPTY_TTL: z.coerce.number().int().min(0).default(300),
   AUTH_RATE_LIMIT: z.coerce.number().int().min(0).default(30),
@@ -52,6 +53,7 @@ export interface Config {
     outboxDir: string;
   };
   iceServers: IceServer[];
+  iceTransportPolicy: 'all' | 'relay';
   room: {
     maxParticipants: number;
     /** How long an empty room stays open, in milliseconds. 0 keeps rooms open until the owner ends them. */
@@ -132,6 +134,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       outboxDir: path.resolve(e.MAIL_OUTBOX_DIR ?? path.join(dataDir, 'outbox')),
     },
     iceServers: parseIceServers(e.ICE_SERVERS),
+    iceTransportPolicy: e.ICE_TRANSPORT_POLICY,
     room: {
       maxParticipants: e.ROOM_MAX_PARTICIPANTS,
       emptyTtlMs: e.ROOM_EMPTY_TTL * 1000,
