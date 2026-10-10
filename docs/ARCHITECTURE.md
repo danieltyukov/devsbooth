@@ -44,7 +44,7 @@ The server never touches audio. It stores accounts, follows and rooms, decides w
 
 Codes are 8 digits, stored as salted HMACs, valid for ten minutes and three guesses, and only redeemable with the challenge returned to the browser that asked for them. Quotas per requester and per address bound how many codes can be sent; [SECURITY.md](../SECURITY.md) has the numbers and the trade-offs.
 
-Sessions are opaque: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie, stored in MongoDB as a SHA-256 hash with a 30-day sliding expiry. There are no JWTs, so logging out ends a session immediately. State-changing requests must not come from another origin and must not use content types an HTML form can send, which closes cross-site request forgery on top of `SameSite`.
+Sessions are opaque: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie, stored in MongoDB as a SHA-256 hash with a 30-day sliding expiry. There are no JWTs, so logging out ends a session immediately, and also disconnects any Socket.IO connection opened with it. State-changing requests must not come from another origin and must not use content types an HTML form can send, which closes cross-site request forgery on top of `SameSite`.
 
 A user is onboarded once they have a name and a username. Until then the API only allows editing the profile, and the Socket.IO handshake refuses them.
 
