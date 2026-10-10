@@ -134,6 +134,24 @@ describe('joining a room', () => {
   });
 });
 
+describe('sessions', () => {
+  it("disconnects a session's sockets when it logs out", async () => {
+    const room = await createRoom();
+    const a = await t.socket(host.cookie);
+    await emitWithAck(a, 'room:join', { roomId: room.id });
+    const leaving = await t.createUser('rt_leaving');
+    const b = await t.socket(leaving.cookie);
+    const jb = await emitWithAck(b, 'room:join', { roomId: room.id });
+    if (!jb.ok) throw new Error('join failed');
+
+    const left = next(a, 'peer:left');
+    const disconnected = new Promise<string>((resolve) => b.once('disconnect', resolve));
+    await t.http.post('/api/auth/logout').set('Cookie', leaving.cookie).expect(204);
+    expect(await disconnected).toBe('io server disconnect');
+    expect((await left).peerId).toBe(jb.self.peerId);
+  });
+});
+
 describe('roles and state', () => {
   it('keeps listeners muted, lets speakers unmute, and lets listeners raise a hand', async () => {
     const room = await createRoom();

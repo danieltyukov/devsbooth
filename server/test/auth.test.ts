@@ -120,6 +120,19 @@ describe('sign-in codes', () => {
     expect(stale.body.error.code).toBe('code_expired');
   });
 
+  it('creates one account when the first two sign-ins race', async () => {
+    const first = await requestCode('twins@example.com');
+    const second = await requestCode('twins@example.com');
+    const [a, b] = await Promise.all([
+      verify('twins@example.com', first.code, first.challenge),
+      verify('twins@example.com', second.code, second.challenge),
+    ]);
+    const ok = [a, b].filter((res) => res.status === 200);
+    expect(ok.length).toBeGreaterThanOrEqual(1);
+    for (const res of [a, b]) expect(res.status).not.toBe(500);
+    if (ok.length === 2) expect(ok[0]!.body.user.id).toBe(ok[1]!.body.user.id);
+  });
+
   it('logs out by deleting the session', async () => {
     const cookie = await t.signIn('barbara@example.com');
     await t.http.post('/api/auth/logout').set('Cookie', cookie).expect(204);

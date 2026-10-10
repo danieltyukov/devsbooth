@@ -52,7 +52,7 @@ export function useRoomSession(
 ) {
   const [state, dispatch] = useReducer(roomReducer, initialRoomState);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
-  const [mic, setMic] = useState<{ status: MicStatus; deviceId?: string }>({ status: 'off' });
+  const [mic, setMic] = useState<{ status: MicStatus; deviceId?: string; error?: string }>({ status: 'off' });
   const [levels] = useState(() => new LevelStore());
 
   const socketRef = useRef<RoomSocket | null>(null);
@@ -77,7 +77,10 @@ export function useRoomSession(
 
   const acquireMicrophone = useCallback(async (deviceId: string | undefined) => {
     const request = ++micRequestRef.current;
-    setMic((current) => ({ status: current.status === 'on' ? 'on' : 'requesting', deviceId }));
+    setMic((current) => ({
+      status: current.status === 'on' ? 'on' : 'requesting',
+      deviceId: current.deviceId,
+    }));
     try {
       const stream = await openMicrophone(deviceId);
       if (request !== micRequestRef.current) {
@@ -95,6 +98,17 @@ export function useRoomSession(
       setMic({ status: 'on', deviceId: deviceRef.current });
     } catch (err) {
       if (request !== micRequestRef.current) return;
+      // Switching failed but the previous microphone still works: keep it, so mute keeps working.
+      const working = streamRef.current?.getAudioTracks()[0];
+      if (working && working.readyState === 'live') {
+        deviceRef.current = working.getSettings().deviceId;
+        setMic({
+          status: 'on',
+          deviceId: deviceRef.current,
+          error: 'That microphone could not be opened, so you are still on the previous one.',
+        });
+        return;
+      }
       const name = (err as DOMException).name;
       setMic({ status: name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'unavailable' });
     }
